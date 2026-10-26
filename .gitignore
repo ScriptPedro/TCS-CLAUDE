@@ -1,0 +1,22 @@
+# Dados (grandes e sujeitos às regras da competição — não versionar)
+data/raw/*
+data/processed/*
+!data/**/.gitkeep
+
+# Modelos treinados
+models/*
+!models/.gitkeep
+
+# Credenciais
+kaggle.json
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Configuração local do editor/assistente
+.claude/

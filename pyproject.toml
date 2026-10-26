@@ -1,0 +1,14 @@
+[project]
+name = "assessor-investimentos"
+version = "1.0.0"
+description = "Assessor de Investimentos Virtual — projeto acadêmico de IA Aplicada (BFSI)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -p no:cacheprovider"
+filterwarnings = [
+    # Avisos internos de bibliotecas de terceiros (matplotlib/pyparsing, shap), não do nosso código
+    "ignore::DeprecationWarning",
+    "ignore:LightGBM binary classifier with TreeExplainer:UserWarning",
+]
