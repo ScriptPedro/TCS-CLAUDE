@@ -22,7 +22,10 @@ ipykernel==6.29.5
 
 # Aplicação
 streamlit==1.39.0
+fastapi==0.115.4    # API do front React (api/main.py)
+uvicorn==0.32.0
 
 # Dados externos e testes
 kaggle==1.6.17
 pytest==8.3.3
+httpx==0.27.2       # TestClient do FastAPI
