@@ -108,7 +108,8 @@ Ou etapa por etapa:
 | 5. Recomendação | `python -m src.recommender` | `models/recommender.joblib`, figuras 15–18 |
 | 8. Personas | `python -m src.personas` | `reports/personas.md` |
 | 8. Auditoria | `python -m src.bias_audit` | `reports/auditoria_vies.md` |
-| 7. App | `streamlit run app/main.py` | http://localhost:8501 |
+| 7. App (Streamlit) | `streamlit run app/main.py` | http://localhost:8501 |
+| 7. App (React) | ver [Front React](#front-react) | http://localhost:5173 |
 | Testes | `pytest` | — |
 
 **Ensaio isolado** (não toca em `data/`, `models/` nem `reports/`): `python -m src.pipeline --out ensaio --sample-size 5000`.
@@ -119,6 +120,22 @@ Ou etapa por etapa:
 - Para usar modelos de outra pasta: `$env:ASSESSOR_MODELS_DIR = "C:\caminho"; streamlit run app/main.py`.
   A pasta precisa conter `segmentation.joblib`, `recommender.joblib` e `prep_stats.json`.
 - Ao alterar arquivos em `src/`, **reinicie** o servidor: o Streamlit só recarrega o script principal.
+
+### Front React
+
+Interface nova em `frontend/` (React + Vite + TypeScript), servida pela API `api/main.py` (FastAPI).
+A API reaproveita `app/components.py` e `src/advisor.py`: nenhuma regra foi duplicada no front.
+Requer [Node.js](https://nodejs.org) 18 ou superior.
+
+Em dois terminais, na raiz do projeto:
+
+```powershell
+uvicorn api.main:app --reload --port 8000      # terminal 1: API
+cd frontend; npm install; npm run dev          # terminal 2: front em http://localhost:5173
+```
+
+Para apresentar com um único servidor: `cd frontend; npm run build` e depois só a API
+(`uvicorn api.main:app --port 8000`), que passa a servir o front em http://localhost:8000.
 
 ## Tempo esperado
 
