@@ -18,7 +18,7 @@ Features: age, renta_log, antiguedad, ind_actividad_cliente, n_liquidez, n_renda
 
 Cotovelo em **k=5**. Escolhido **k=4**: maior silhouette na faixa de negócio [4, 8].
 
-![Escolha de k](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/11_escolha_k.png)
+![Escolha de k](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/11_escolha_k.png)
 
 ## K-Means × GMM
 
@@ -47,8 +47,8 @@ Concordância entre os dois modelos (ARI): **0.51**.
 | 2 | 24.470 | 42.600 | 98685.750 | 3.530 | 54.090 | 1.300 | 5.840 | 67.270 | 4.040 | 1.990 | 0.310 | 7.640 | particulares | 94.680 |
 | 3 | 13.250 | 51.560 | 230311.950 | 11.020 | 53.250 | 1.880 | 15.140 | 72.520 | 6.990 | 8.410 | 2.510 | 16.770 | particulares | 83.380 |
 
-![Tamanhos](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/12_tamanho_clusters.png)
+![Tamanhos](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/12_tamanho_clusters.png)
 
-![Perfil](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/13_perfil_clusters.png)
+![Perfil](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/13_perfil_clusters.png)
 
-![PCA](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/14_pca_clusters.png)
+![PCA](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/14_pca_clusters.png)

@@ -15,7 +15,7 @@ Treino: 40.000 clientes · teste: 10.000 · itens: Poupança, CDB / depósito a 
 - `precision@k` / `map@k`: ranqueando os 5 itens por probabilidade (clientes com ≥ 1 item). Com 5 itens, MAP@7 = MAP@5.
 - `loo_*`: um item possuído é escondido; mede se ele aparece no topo entre os itens que o cliente "não tem". É o cenário real do app.
 
-![Comparação](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/15_comparacao_modelos.png)
+![Comparação](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/15_comparacao_modelos.png)
 
 ## AUC por item
 
@@ -27,7 +27,7 @@ Treino: 40.000 clientes · teste: 10.000 · itens: Poupança, CDB / depósito a 
 | Ações / valores mobiliários | 0.918 | 0.766 | 0.500 |
 | Previdência privada | 0.934 | 0.788 | 0.500 |
 
-![AUC](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/16_auc_por_item.png)
+![AUC](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/16_auc_por_item.png)
 
 ## Explicabilidade (SHAP)
 
@@ -38,6 +38,6 @@ Treino: 40.000 clientes · teste: 10.000 · itens: Poupança, CDB / depósito a 
 | Ações / valores mobiliários | 0.287 | 0.067 | 0.409 | 1.413 | 0.066 | 0.018 | 0.000 | 0.019 | 0.019 | nan | 0.005 | 0.014 | 0.003 |
 | Previdência privada | 0.240 | 0.069 | 0.358 | 0.851 | 0.059 | 0.085 | 0.000 | 0.004 | 0.022 | 0.021 | nan | 0.044 | 0.002 |
 
-![SHAP heatmap](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/17_shap_importancia.png)
+![SHAP heatmap](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/17_shap_importancia.png)
 
-![SHAP Fundos de investimento](C:/Users/Aluno/Downloads/acessor-investimento/scratch-2026-10-26-396de3/assessor-investimentos/docs/figures/18_shap_fundos.png)
+![SHAP Fundos de investimento](C:/Users/Aluno/Documents/TCS-CLAUDE/docs/figures/18_shap_fundos.png)
