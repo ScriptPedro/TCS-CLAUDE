@@ -22,18 +22,17 @@ export default function Questionario({ etapas, etapa, respostas, erros, enviando
         {etapas.map((e, i) => (
           <li key={e.titulo} className={i === etapa ? "ativa" : i < etapa ? "feita" : ""}>
             <button onClick={() => i < etapa && onEtapa(i)} disabled={i > etapa} aria-current={i === etapa ? "step" : undefined}>
-              <span className="bolinha">{i < etapa ? "✓" : i + 1}</span>
-              <span className="rotulo-etapa">{e.titulo}</span>
+              {e.titulo}
             </button>
           </li>
         ))}
       </ol>
 
-      <div className="cartao etapa">
+      <div className="etapa">
         <header>
-          <p className="sobretitulo">Etapa {etapa + 1} de {etapas.length}</p>
-          <h2>{atual.titulo}</h2>
-          <p className="suave">{atual.descricao}</p>
+          <p className="suave pequeno">Etapa {etapa + 1} de {etapas.length}</p>
+          <h1>{atual.titulo}</h1>
+          <p className="lead">{atual.descricao}</p>
         </header>
 
         {atual.perguntas.map((p) => (
@@ -41,21 +40,21 @@ export default function Questionario({ etapas, etapa, respostas, erros, enviando
         ))}
 
         {erros.length > 0 && (
-          <div className="alerta erro" role="alert">
+          <div className="erro" role="alert">
             {erros.map((e) => <p key={e}>{e}</p>)}
           </div>
         )}
 
         <footer className="navegacao">
           {etapa > 0 ? (
-            <button className="botao" onClick={() => onEtapa(etapa - 1)}>← Voltar</button>
+            <button className="botao" onClick={() => onEtapa(etapa - 1)}>Voltar</button>
           ) : <span />}
           {ultima ? (
             <button className="botao primario" onClick={onEnviar} disabled={enviando}>
               {enviando ? "Calculando…" : "Ver minha recomendação"}
             </button>
           ) : (
-            <button className="botao primario" onClick={() => onEtapa(etapa + 1)}>Avançar →</button>
+            <button className="botao primario" onClick={() => onEtapa(etapa + 1)}>Avançar</button>
           )}
         </footer>
       </div>

@@ -83,20 +83,21 @@ export default function App() {
     <div className="app">
       <header className="topo">
         <button className="marca" onClick={recomecar} aria-label="Voltar ao início">
-          <img src="/favicon.svg" alt="" width={28} height={28} />
+          <img src="/favicon.svg" alt="" width={24} height={24} />
           <span>Assessor de Investimentos</span>
         </button>
-        <span className="selo">Projeto acadêmico · IA Aplicada</span>
+        <span className="selo">Projeto acadêmico de IA Aplicada</span>
       </header>
 
       <main className="conteudo">
         {erroCarga && (
-          <div className="alerta erro">
-            <strong>Não deu para carregar o questionário.</strong> {erroCarga}
+          <div className="erro" role="alert">
+            <p><strong>O questionário não carregou.</strong> {erroCarga}</p>
+            <p>Inicie a API na raiz do projeto:</p>
             <pre>uvicorn api.main:app --port 8000</pre>
           </div>
         )}
-        {!erroCarga && !questionario && <div className="carregando">Carregando…</div>}
+        {!erroCarga && !questionario && <p className="carregando">Carregando o questionário…</p>}
         {questionario && tela === "inicio" && <Inicio aviso={questionario.aviso} onComecar={() => setTela("questionario")} />}
         {questionario && tela === "questionario" && (
           <Questionario
@@ -114,7 +115,7 @@ export default function App() {
       </main>
 
       <footer className="rodape">
-        Dados: Santander Product Recommendation (Kaggle) · Não é recomendação de investimento.
+        Modelos treinados com dados do Santander Product Recommendation (Kaggle). Não é recomendação de investimento.
       </footer>
     </div>
   );
