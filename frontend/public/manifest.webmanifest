@@ -1,0 +1,12 @@
+{
+  "name": "Banco Cédula · Assessor de Investimentos",
+  "short_name": "Banco Cédula",
+  "description": "Simulação de app de banco com o Assessor de Investimentos Virtual.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f5f4",
+  "theme_color": "#0f3b32",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
