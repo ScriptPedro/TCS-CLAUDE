@@ -86,6 +86,17 @@ def test_relatorio_gerado(tmp_path: Path) -> None:
     assert "Raio X" in texto and "Limitações" in texto and "LGPD" in texto
 
 
+def test_localizar_aceita_outro_nome(tmp_path: Path) -> None:
+    real = write_fake_raio_x(tmp_path / "raio_x_investidor_9.xlsx", n=30)
+    assert raio_x.localizar(tmp_path / "DADOS BRUTOS RAIO X 2026.xlsx") == real
+
+
+def test_localizar_ausente_explica_o_que_fazer(tmp_path: Path) -> None:
+    (tmp_path / "raio_x_investidor_9.zip").write_bytes(b"")
+    with pytest.raises(FileNotFoundError, match="extraia o .xlsx"):
+        raio_x.localizar(tmp_path / "DADOS BRUTOS RAIO X 2026.xlsx")
+
+
 def test_carregar_ausente_devolve_none(tmp_path: Path) -> None:
     assert raio_x.carregar(tmp_path / "nao_existe.json") is None
 

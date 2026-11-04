@@ -75,10 +75,10 @@ def run(
     comparison, _ = recommender.run(paths.clustered, paths.rec_model, paths.rec_report, paths.figures)
 
     logger.info("[4/6] Referência brasileira (Raio X)")
-    if Path(raio_x_xlsx).exists():
-        raio_x.run(raio_x_xlsx, paths.raio_x_table, paths.raio_x_report)
-    else:
-        logger.warning("Microdados do Raio X não encontrados em %s: etapa pulada (D36).", raio_x_xlsx)
+    try:
+        raio_x.run(raio_x.localizar(raio_x_xlsx), paths.raio_x_table, paths.raio_x_report)
+    except FileNotFoundError as erro:
+        logger.warning("Etapa do Raio X pulada (D36): %s", erro)
 
     logger.info("[5/6] Personas")
     artefatos = advisor.carregar_artefatos(paths.seg_model, paths.rec_model, paths.prep_stats, paths.raio_x_table)

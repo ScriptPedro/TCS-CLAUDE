@@ -47,6 +47,32 @@ def _colunas_usadas(nome: Any) -> bool:
     return nome in fixas or (nome.startswith(prefixo) and len(nome) == len(prefixo) + 1 and nome[-1].isalpha())
 
 
+def localizar(xlsx: Path) -> Path:
+    """Caminho do arquivo; se não existir, procura um .xlsx com "raio" e "x" no nome na mesma pasta.
+
+    Evita falhar só porque o arquivo foi salvo com outro nome (ex.: ``raio_x_2026.xlsx``).
+    """
+    xlsx = Path(xlsx)
+    if xlsx.exists():
+        return xlsx
+    pasta = xlsx.parent
+    candidatos = sorted(
+        p for p in (pasta.glob("*.xlsx") if pasta.is_dir() else [])
+        if "raio" in p.name.lower() and "x" in p.name.lower().replace("xlsx", "")
+    )
+    if len(candidatos) == 1:
+        logger.info("Usando %s (não achei %s)", candidatos[0], xlsx.name)
+        return candidatos[0]
+    zips = sorted(p.name for p in pasta.glob("*.zip")) if pasta.is_dir() else []
+    dica = f" Há .zip na pasta ({', '.join(zips)}): extraia o .xlsx antes." if zips else ""
+    varios = f" Achei vários candidatos: {', '.join(p.name for p in candidatos)}; use --input." if candidatos else ""
+    raise FileNotFoundError(
+        f"Microdados do Raio X não encontrados em {xlsx}.{varios}{dica} Baixe os 'dados brutos' em "
+        "https://www.anbima.com.br/pt_br/especial/raio-x-do-investidor-brasileiro.htm, extraia o .xlsx e "
+        f"salve em {pasta} (ou rode: python -m src.raio_x --input <caminho do .xlsx>)."
+    )
+
+
 def ler(xlsx: Path) -> pd.DataFrame:
     """Lê apenas as colunas necessárias da aba codificada (uma linha por entrevistado)."""
     df = pd.read_excel(xlsx, sheet_name=config.RAIO_X_SHEET, usecols=_colunas_usadas)
@@ -251,7 +277,7 @@ def run(
     report: Path = config.RAIO_X_REPORT_FILE,
 ) -> dict[str, Any]:
     """Lê os microdados, gera a tabela de referência e o relatório."""
-    tabela = construir_tabela(preparar(ler(Path(xlsx))))
+    tabela = construir_tabela(preparar(ler(localizar(Path(xlsx)))))
     out_json = Path(out_json)
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(tabela, ensure_ascii=False, indent=1), encoding="utf-8")
