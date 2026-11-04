@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Python 3.11 (versions pinned in `requirements.txt`; `numba`/`contourpy` are pinned to avoid numpy 2.x, which breaks shap 0.46). Run everything from the repo root, as modules (`python -m src.X`).
+**Always use the `.venv` virtual environment (Python 3.11)** — never the global Python; see `skills/ambiente-virtual/SKILL.md` for setup, the activation check and common errors. Python 3.11 (versions pinned in `requirements.txt`; `numba`/`contourpy` are pinned to avoid numpy 2.x, which breaks shap 0.46). Run everything from the repo root, as modules (`python -m src.X`).
 
 ```powershell
 py -3.11 -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.txt
