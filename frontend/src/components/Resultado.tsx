@@ -12,7 +12,6 @@ interface Props {
 export default function Resultado({ r, onAjustar, onRecomecar }: Props) {
   const dentro = r.carteira.filter((c) => c.pct > 0);
   const fora = r.carteira.filter((c) => c.pct === 0);
-  const perfil = r.perfil.efetivo;
 
   return (
     <section className="resultado">
@@ -76,13 +75,11 @@ export default function Resultado({ r, onAjustar, onRecomecar }: Props) {
       <details className="sanfona">
         <summary>Como os valores foram calculados</summary>
         <ol>
-          <li>Suas respostas definem o perfil <strong>{perfil}</strong>, e o perfil define o mínimo e o máximo de cada classe.</li>
-          <li>Cada classe começa no mínimo.</li>
-          <li>O espaço que sobra vai para as classes mais comuns entre clientes parecidos com você (afinidade estimada pelo modelo de IA), sem passar do máximo.</li>
+          {r.calculo.passos.map((p) => <li key={p}><Rico texto={p} /></li>)}
         </ol>
         <div className="tabela-rolagem">
           <table>
-            <thead><tr><th>Classe</th><th>Mínimo</th><th>Máximo</th><th>Afinidade do modelo</th><th>Final</th></tr></thead>
+            <thead><tr><th>Classe</th><th>Mínimo</th><th>Máximo</th><th>{r.calculo.rotulo_afinidade}</th><th>Final</th></tr></thead>
             <tbody>
               {r.carteira.map((c) => (
                 <tr key={c.classe}>
@@ -99,6 +96,23 @@ export default function Resultado({ r, onAjustar, onRecomecar }: Props) {
       <ol className="passos">
         {r.proximos_passos.map((p) => <li key={p}><p><Rico texto={p} /></p></li>)}
       </ol>
+
+      {r.referencia_br && (
+        <>
+          <h2>Como brasileiros parecidos com você investem</h2>
+          <p className="suave">{r.referencia_br.faixa_idade} · renda {r.referencia_br.faixa_renda}</p>
+          <ul className="referencia-br">
+            {r.referencia_br.posse.map((p) => (
+              <li key={p.classe}>
+                <span>{p.nome}</span>
+                <strong>{pct(p.fracao)}</strong>
+                <div className="medidor" aria-hidden><span style={{ width: pct(p.fracao) }} /></div>
+              </li>
+            ))}
+          </ul>
+          {r.referencia_br.linhas.map((l) => <p key={l} className="nota-lateral"><Rico texto={l} /></p>)}
+        </>
+      )}
 
       <h2>Produtos para conhecer</h2>
       {r.produtos.length === 0 ? (

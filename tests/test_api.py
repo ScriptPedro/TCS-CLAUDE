@@ -77,6 +77,8 @@ def test_recomendacao_moderada(client: TestClient) -> None:
     assert ref["faixa_idade"] == "35 a 44 anos" and ref["entrevistados"] >= 0
     assert {p["classe"] for p in ref["posse"]} == set(config.BR_ASSET_CLASSES)
     assert "Como brasileiros parecidos com você investem" in res["texto"]
+    assert ref["linhas"] and [p["fracao"] for p in ref["posse"]] == sorted((p["fracao"] for p in ref["posse"]), reverse=True)
+    assert "Raio X" in res["calculo"]["rotulo_afinidade"] and len(res["calculo"]["passos"]) == 3
 
 
 def test_recomendacao_endividada_ativa_modo_protecao(client: TestClient) -> None:

@@ -383,3 +383,8 @@ th { font-weight: 700; color: var(--grafite); }
 @media (min-width: 600px) { .aviso-flutuante { bottom: 104px; } }
 @keyframes surgir { from { opacity: 0; transform: translate(-50%, 8px); } }
 @media (prefers-reduced-motion: reduce) { .aviso-flutuante { animation: none; } }
+
+/* Referência brasileira (Raio X ANBIMA, D36) */
+.referencia-br { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
+.referencia-br li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
+.referencia-br li .medidor { grid-column: 1 / -1; }

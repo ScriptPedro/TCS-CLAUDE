@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 
 from src import config
 
@@ -35,3 +37,15 @@ def fmt_num(valor: float, casas: int = 0) -> str:
 def fmt_brl(valor: float) -> str:
     """Valor em reais sem centavos: 30000 → 'R$ 30.000'."""
     return f"R$ {fmt_num(valor)}"
+
+
+def caminho_relativo(alvo: Path, pasta_do_relatorio: Path) -> str:
+    """Caminho de ``alvo`` relativo à pasta do relatório, com "/" (link Markdown portátil).
+
+    Links absolutos (ex.: ``C:/Users/...``) quebram no GitHub e em outra máquina. Se não houver
+    caminho relativo (drives diferentes no Windows), devolve o absoluto.
+    """
+    try:
+        return Path(os.path.relpath(Path(alvo).resolve(), Path(pasta_do_relatorio).resolve())).as_posix()
+    except ValueError:
+        return Path(alvo).as_posix()

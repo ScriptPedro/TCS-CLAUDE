@@ -71,3 +71,15 @@ def test_sem_raio_x_a_etapa_e_pulada(tmp_path: Path, executado: tuple[dict, pipe
     assert art.raio_x is None
     res = advisor.aconselhar(personas.PERSONAS["Adulto moderado"], art)
     assert res.carteira.referencia_br is None
+
+
+def test_figuras_com_link_relativo(executado: tuple[dict, pipeline.Paths]) -> None:
+    """Links absolutos (C:/Users/...) quebram no GitHub e em outra máquina."""
+    import re
+    _, paths = executado
+    for rel in (paths.seg_report, paths.rec_report):
+        links = re.findall(r"!\[[^\]]*\]\(([^)]+)\)", rel.read_text(encoding="utf-8"))
+        assert links
+        for link in links:
+            assert not Path(link).is_absolute() and not re.match(r"^[A-Za-z]:", link), link
+            assert (rel.parent / link).exists(), link

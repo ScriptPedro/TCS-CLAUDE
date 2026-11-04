@@ -39,7 +39,7 @@ from sklearn.model_selection import train_test_split
 from src import config
 from src.eda import save_fig, set_style
 from src.features import add_model_features, add_owned_flags
-from src.utils import fmt_num, get_logger
+from src.utils import caminho_relativo, fmt_num, get_logger
 
 logger = get_logger(__name__)
 
@@ -390,8 +390,9 @@ def _md(frame: pd.DataFrame) -> str:
 
 
 def build_report(comparison: pd.DataFrame, auc_table: pd.DataFrame, importance: pd.DataFrame,
-                 n_train: int, n_test: int, fig_dir: Path, skipped: list[str], beeswarm_item: str) -> str:
-    rel = lambda n: (fig_dir / f"{n}.png").as_posix()  # noqa: E731
+                 n_train: int, n_test: int, fig_dir: Path, skipped: list[str], beeswarm_item: str,
+                 report_dir: Path = config.REPORTS_DIR) -> str:
+    rel = lambda n: caminho_relativo(fig_dir / f"{n}.png", report_dir)  # noqa: E731
     imp = importance.rename(index=config.QUESTIONNAIRE_LABELS, columns=FEATURE_LABELS)
     aviso = (
         f"**Sem modelo (menos de {config.MIN_POSITIVES_TO_TRAIN} clientes possuem; usam a taxa média, D31):** "
@@ -477,7 +478,8 @@ def run(input_path: Path, model_path: Path, report_path: Path, fig_dir: Path) ->
     save_fig(fig_shap_beeswarm(models[beeswarm_item], shap_sample, beeswarm_item), "18_shap_fundos", fig_dir)
     plt.close("all")
 
-    report = build_report(comparison, auc_table, importance, len(train), len(test), fig_dir, skipped, beeswarm_item)
+    report = build_report(comparison, auc_table, importance, len(train), len(test), fig_dir, skipped, beeswarm_item,
+                          Path(report_path).parent)
     report_path.write_text(report, encoding="utf-8")
     logger.info("Salvo: %s | %s", model_path, report_path)
     return comparison, auc_table

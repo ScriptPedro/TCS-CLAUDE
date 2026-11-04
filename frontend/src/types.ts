@@ -71,6 +71,7 @@ export interface Resultado {
   proximos_passos: string[];
   /** Brasileiros da mesma renda e idade (Raio X ANBIMA, D36); null sem a tabela. */
   referencia_br: ReferenciaBR | null;
+  calculo: { passos: string[]; rotulo_afinidade: string };
   produtos: Produto[];
   texto: string;
   aviso: string;
@@ -83,4 +84,6 @@ export interface ReferenciaBR {
   algum_investimento: number;
   posse: { classe: string; nome: string; fracao: number }[];
   fonte: string;
+  /** Frases prontas (podem ter **negrito**): o que o grupo faz × o que o perfil pede. */
+  linhas: string[];
 }

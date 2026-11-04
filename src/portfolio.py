@@ -540,6 +540,22 @@ def comparacao_brasil(carteira: Carteira) -> list[str]:
     return linhas
 
 
+def passos_calculo(carteira: Carteira) -> list[str]:
+    """Como a % de cada classe foi calculada (mesmo texto nos dois fronts)."""
+    origem = ("metade pelo modelo de IA e metade pelo que brasileiros da sua renda e idade usam (Raio X ANBIMA)"
+              if carteira.referencia_br else "estimada pelo modelo de IA")
+    return [
+        f"Suas respostas definem o perfil **{carteira.perfil_efetivo}**, e o perfil define o mínimo e o máximo de cada classe.",
+        "Cada classe começa no mínimo.",
+        f"O espaço que sobra vai para as classes mais comuns entre pessoas parecidas com você (afinidade {origem}), "
+        "sem passar do máximo.",
+    ]
+
+
+def rotulo_afinidade(carteira: Carteira) -> str:
+    return "Afinidade (modelo + Raio X)" if carteira.referencia_br else "Afinidade do modelo"
+
+
 # ---------------------------------------------------------------------------
 # Explicação em linguagem simples (template determinístico e auditável)
 # ---------------------------------------------------------------------------

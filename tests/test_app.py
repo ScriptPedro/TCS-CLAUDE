@@ -10,7 +10,8 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app import components as ui
-from src import config, recommender, segmentation
+from src import config, raio_x, recommender, segmentation
+from tests.fakes import write_fake_raio_x
 from tests.test_recommender import _signal_data
 
 APP = str(Path(__file__).resolve().parents[1] / "app" / "main.py")
@@ -104,6 +105,7 @@ def models_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     recommender.run(tmp / "clusters.parquet", tmp / "recommender.joblib", tmp / "rec.md", tmp / "figs")
     edges = pd.qcut(data["renta"], 5, retbins=True)[1].tolist()
     (tmp / "prep_stats.json").write_text(json.dumps({"income_quantile_edges": edges}), encoding="utf-8")
+    raio_x.run(write_fake_raio_x(tmp / "raio_x.xlsx"), tmp / config.RAIO_X_FILE.name, tmp / "raio_x.md")
     return tmp
 
 
@@ -137,7 +139,7 @@ def test_tela_inicial_mostra_etapa_1_e_aviso(app: AppTest) -> None:
     assert any(config.DISCLAIMER in w.value for w in app.warning)
     assert app.subheader[0].value == "Sobre você"
     assert [b.key for b in app.button] == ["btn_avancar"]  # sem "Voltar" na primeira etapa
-    assert not app.number_input(key="w_idade").value is None
+    assert app.number_input(key="w_idade").value is not None
 
 
 def test_voltar_preserva_respostas(app: AppTest) -> None:
@@ -172,6 +174,9 @@ def test_persona_moderada_mostra_carteira_explicada(app: AppTest) -> None:
     assert res.cluster_nome in textos  # segmento em texto, não em st.metric
     # "$" escapado: sem isso o Markdown renderiza "R$ 640 de cada R$ 1.000" como fórmula LaTeX
     assert any("de cada R\\$ 1.000" in p.proto.text for p in app.get("progress"))
+    # referência brasileira visível fora do texto completo (D36)
+    assert "Como brasileiros parecidos com você investem" in [s.value for s in app.subheader]
+    assert "não o que é adequado" in textos
 
 
 def test_ajustar_respostas_volta_com_respostas_mantidas(app: AppTest) -> None:
