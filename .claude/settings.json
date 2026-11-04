@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "ask": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(git * push)",
+      "Bash(git * push *)",
+      "mcp__github__push_files",
+      "mcp__github__create_or_update_file",
+      "mcp__github__delete_file",
+      "mcp__github__create_branch",
+      "mcp__github__merge_pull_request",
+      "mcp__github__update_pull_request_branch"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git * push*)",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/revisar-push.sh\"",
+            "timeout": 30,
+            "statusMessage": "Preparando revisão do push..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git push*)",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/revisar-push.sh\"",
+            "timeout": 30,
+            "statusMessage": "Preparando revisão do push..."
+          }
+        ]
+      }
+    ]
+  }
+}

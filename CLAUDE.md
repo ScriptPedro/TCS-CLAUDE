@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 "Assessor de Investimentos Virtual" — an academic Applied AI (BFSI) project. A user fills in a questionnaire and gets a client segment (K-Means), likely products with probabilities and reasons (LightGBM + SHAP), a suggested portfolio by Brazilian asset class, and a plain-language explanation. Models are trained on the Kaggle Santander Product Recommendation dataset (Spanish clients, 2015–2016). Code, identifiers, comments, docs and UI text are in **Portuguese** — keep it that way.
 
+## Git
+
+**Never push without the user's explicit authorization in the current conversation** — this covers `git push` (including force pushes) and GitHub tools that write to the remote (`push_files`, `create_or_update_file`, `delete_file`, `create_branch`, `merge_pull_request`, `update_pull_request_branch`). Commit locally, show what will be pushed (`git log origin/<branch>..HEAD`), and ask first. `.claude/settings.json` enforces this with `ask` permission rules and a `PreToolUse` hook (`.claude/hooks/revisar-push.sh`) that puts the outgoing commits and changed files in the approval prompt, so the user reviews exactly what leaves before allowing it.
+
 ## Commands
 
 **Always use the `.venv` virtual environment (Python 3.11)** — never the global Python; see `skills/ambiente-virtual/SKILL.md` for setup, the activation check and common errors. Python 3.11 (versions pinned in `requirements.txt`; `numba`/`contourpy` are pinned to avoid numpy 2.x, which breaks shap 0.46). Run everything from the repo root, as modules (`python -m src.X`).
