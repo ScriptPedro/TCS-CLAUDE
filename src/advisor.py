@@ -3,6 +3,7 @@
 Aqui fica a fronteira explícita entre as duas partes do sistema:
     - ``questionario_para_linha``: traduz as respostas em features do dataset (D16);
     - modelos: cluster (K-Means) e P(item) (LightGBM) + fatores SHAP;
+    - referência brasileira: posse real por renda e idade (Raio X ANBIMA, D36), opcional;
     - ``portfolio``: regras de suitability e carteira (sem ML).
 
 O app (Etapa 7) só precisa chamar ``carregar_artefatos()`` uma vez e
@@ -21,7 +22,7 @@ import joblib
 import numpy as np
 import pandas as pd
 
-from src import config, portfolio, recommender, segmentation
+from src import config, portfolio, raio_x, recommender, segmentation
 from src.features import items_to_product_row
 from src.portfolio import Carteira, Questionario
 from src.utils import get_logger
@@ -36,14 +37,20 @@ class Artefatos:
     segmentacao: dict[str, Any]
     recomendador: dict[str, Any]
     prep_stats: dict[str, Any]
+    raio_x: dict[str, Any] | None = None   # tabela de referência brasileira (opcional, D36)
 
 
 def carregar_artefatos(
     seg_path: Path = config.SEGMENTATION_MODEL_FILE,
     rec_path: Path = config.REC_MODEL_FILE,
     stats_path: Path = config.PREP_STATS_FILE,
+    raio_x_path: Path | None = None,
 ) -> Artefatos:
-    """Carrega os três artefatos; mensagem clara se alguma etapa não foi executada."""
+    """Carrega os três artefatos obrigatórios; mensagem clara se alguma etapa não foi executada.
+
+    A referência brasileira (``raio_x.json``) é opcional: por padrão é procurada na
+    mesma pasta do modelo de recomendação. Sem ela, a afinidade vem só do modelo.
+    """
     faltando = [p for p in (seg_path, rec_path, stats_path) if not Path(p).exists()]
     if faltando:
         raise FileNotFoundError(
@@ -51,7 +58,8 @@ def carregar_artefatos(
             ". Rode: prepare_data → segmentation → recommender."
         )
     stats = json.loads(Path(stats_path).read_text(encoding="utf-8"))
-    return Artefatos(joblib.load(seg_path), joblib.load(rec_path), stats)
+    raio_x_path = Path(rec_path).parent / config.RAIO_X_FILE.name if raio_x_path is None else raio_x_path
+    return Artefatos(joblib.load(seg_path), joblib.load(rec_path), stats, raio_x.carregar(raio_x_path))
 
 
 # ---------------------------------------------------------------------------
@@ -150,8 +158,11 @@ def aconselhar(q: Questionario, artefatos: Artefatos) -> Recomendacao:
     info = artefatos.segmentacao["clusters"][cluster_id]
     probs = recommender.predict_proba(artefatos.recomendador, linha).iloc[0].to_dict()
 
+    # Referência brasileira (dado, não modelo): o que pessoas da mesma renda e idade usam
+    ref = raio_x.referencia(artefatos.raio_x, q.idade, q.renda_mensal) if artefatos.raio_x else None
+
     # Regras: perfil, saúde financeira, carteira
-    carteira = portfolio.montar_carteira(q, probs)
+    carteira = portfolio.montar_carteira(q, probs, ref)
     produtos = recomendar_produtos(linha, artefatos, carteira)
     texto = portfolio.gerar_explicacao(carteira, info["nome"], produtos)
     logger.info("Perfil %s | cluster %d (%s) | carteira %s", carteira.perfil_efetivo, cluster_id, info["nome"], carteira.alocacao)

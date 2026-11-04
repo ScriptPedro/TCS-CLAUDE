@@ -40,16 +40,16 @@ assessor-investimentos/
 ├── app/
 │   ├── main.py            # Etapa 7 — Streamlit (layout e navegação)
 │   └── components.py      # validação do formulário, gráfico (testáveis sem Streamlit)
-├── data/raw/              # train_ver2.csv (não versionado)
+├── data/raw/              # train_ver2.csv e microdados do Raio X (não versionados)
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
 ├── docs/
-│   ├── decisoes.md        # D1–D30: cada decisão técnica e as alternativas descartadas
+│   ├── decisoes.md        # D1–D36: cada decisão técnica e as alternativas descartadas
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
-├── models/                # segmentation.joblib, recommender.joblib, prep_stats.json
+├── models/                # segmentation.joblib, recommender.joblib, prep_stats.json, raio_x.json
 ├── notebooks/01_eda.ipynb # Etapa 3
-├── reports/               # qualidade, segmentação, recomendação, personas, auditoria de viés
+├── reports/               # qualidade, segmentação, recomendação, Raio X, personas, auditoria de viés
 ├── src/
 │   ├── config.py          # TODAS as constantes e premissas
 │   ├── download_data.py   # download via API do Kaggle
@@ -58,6 +58,7 @@ assessor-investimentos/
 │   ├── eda.py             # Etapa 3 — gráficos e insights calculados
 │   ├── segmentation.py    # Etapa 4 — K-Means × GMM
 │   ├── recommender.py     # Etapa 5 — LightGBM, baselines, métricas, SHAP
+│   ├── raio_x.py          # referência brasileira: posse por renda × idade (Raio X ANBIMA, D36)
 │   ├── portfolio.py       # Etapa 6 — suitability e carteira (SEM ML)
 │   ├── advisor.py         # orquestra questionário → modelos → regras
 │   ├── personas.py        # Etapa 8 — personas com saídas esperadas
@@ -90,9 +91,20 @@ pip install -r requirements.txt
 python -m src.download_data
 ```
 
+## Referência brasileira (Raio X ANBIMA, opcional)
+
+A carteira usa também a posse real de produtos entre brasileiros da mesma renda e idade (D36).
+
+1. Na [página do Raio X do Investidor Brasileiro](https://www.anbima.com.br/pt_br/especial/raio-x-do-investidor-brasileiro.htm),
+   baixe os **dados brutos** da 9ª edição (2026).
+2. Salve `DADOS BRUTOS RAIO X 2026.xlsx` em `data/raw/`.
+3. Rode `python -m src.raio_x` (ou o pipeline completo). Isso gera `models/raio_x.json` e `reports/raio_x.md`.
+
+Sem esse arquivo o app funciona normalmente, só com o modelo.
+
 ## Executando
 
-**Tudo de uma vez** (preparação → segmentação → recomendação → personas → auditoria):
+**Tudo de uma vez** (preparação → segmentação → recomendação → Raio X → personas → auditoria):
 
 ```powershell
 python -m src.pipeline
@@ -106,6 +118,7 @@ Ou etapa por etapa:
 | 3. EDA | `jupyter lab notebooks/01_eda.ipynb` | figuras 01–10 |
 | 4. Segmentação | `python -m src.segmentation` | `models/segmentation.joblib`, figuras 11–14 |
 | 5. Recomendação | `python -m src.recommender` | `models/recommender.joblib`, figuras 15–18 |
+| Referência BR | `python -m src.raio_x` | `models/raio_x.json`, `reports/raio_x.md` |
 | 8. Personas | `python -m src.personas` | `reports/personas.md` |
 | 8. Auditoria | `python -m src.bias_audit` | `reports/auditoria_vies.md` |
 | 7. App (Streamlit) | `streamlit run app/main.py` | http://localhost:8501 |
@@ -118,7 +131,7 @@ Ou etapa por etapa:
 
 - Rode na **raiz do projeto** (assim o tema em `.streamlit/config.toml` é aplicado).
 - Para usar modelos de outra pasta: `$env:ASSESSOR_MODELS_DIR = "C:\caminho"; streamlit run app/main.py`.
-  A pasta precisa conter `segmentation.joblib`, `recommender.joblib` e `prep_stats.json`.
+  A pasta precisa conter `segmentation.joblib`, `recommender.joblib` e `prep_stats.json` (e, opcionalmente, `raio_x.json`).
 - Ao alterar arquivos em `src/`, **reinicie** o servidor: o Streamlit só recarrega o script principal.
 
 ### Front React

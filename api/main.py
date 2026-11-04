@@ -147,6 +147,15 @@ def serializar(res: Recomendacao, avisos: list[str]) -> dict[str, Any]:
         "saude": {"modo_protecao": c.saude.modo_protecao, "alertas": c.saude.alertas},
         "carteira": [_classe(res, k) for k in classes],
         "proximos_passos": proximos_passos(c),
+        "referencia_br": None if c.referencia_br is None else {
+            "faixa_renda": c.referencia_br.faixa_renda,
+            "faixa_idade": c.referencia_br.faixa_idade,
+            "entrevistados": c.referencia_br.n,
+            "algum_investimento": c.referencia_br.algum_investimento,
+            "posse": [{"classe": k, "nome": config.CLASS_INFO[k]["nome"], "fracao": v}
+                      for k, v in c.referencia_br.posse.items()],
+            "fonte": c.referencia_br.fonte,
+        },
         "produtos": [
             {
                 "rotulo": p["rotulo"],

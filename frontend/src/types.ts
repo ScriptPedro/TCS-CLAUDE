@@ -69,7 +69,18 @@ export interface Resultado {
   saude: { modo_protecao: boolean; alertas: string[] };
   carteira: Classe[];
   proximos_passos: string[];
+  /** Brasileiros da mesma renda e idade (Raio X ANBIMA, D36); null sem a tabela. */
+  referencia_br: ReferenciaBR | null;
   produtos: Produto[];
   texto: string;
   aviso: string;
+}
+
+export interface ReferenciaBR {
+  faixa_renda: string;
+  faixa_idade: string;
+  entrevistados: number;
+  algum_investimento: number;
+  posse: { classe: string; nome: string; fracao: number }[];
+  fonte: string;
 }

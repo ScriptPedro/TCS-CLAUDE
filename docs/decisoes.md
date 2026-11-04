@@ -332,3 +332,45 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
 - **Bug encontrado no navegador:** "R$ 640 de cada R$ 1.000" virava fórmula LaTeX ("R640decadaR"),
   porque o Streamlit interpreta o texto entre dois `$` como matemática. Todos os textos dinâmicos passam
   por `md()`, que escapa o `$`.
+
+## D36 — Referência brasileira: Raio X do Investidor (ANBIMA) como complemento, não substituto
+
+- **Contexto:** a afinidade que posiciona cada classe dentro da faixa do perfil (D25) vinha só do modelo
+  treinado com clientes espanhóis de 2015–2016, a principal crítica prevista ("dados espanhóis servem
+  para brasileiros?"). Avaliamos as bases brasileiras abertas: **Raio X do Investidor Brasileiro**
+  (ANBIMA/Datafolha, microdados gratuitos), cadastro de investidores do Tesouro Direto (um só produto, sem
+  renda) e estatísticas de varejo/private da ANBIMA (só agregados).
+- **Base escolhida:** Raio X, 9ª edição (2026): 5.832 entrevistados, uma linha por pessoa, peso amostral
+  (`PESOE`), idade, renda individual em faixas de salário mínimo e a pergunta P9 ("investimentos que
+  utiliza atualmente"). Validação: 35,6% dos entrevistados têm algum produto financeiro, contra 36%
+  divulgados pela ANBIMA.
+- **Decisão:** usar o Raio X como **dado de referência**, sem treinar modelo (`src/raio_x.py`):
+  - taxa ponderada de uso de cada classe por **faixa de renda × faixa de idade** (6 × 5 células);
+  - célula suavizada em direção à média da faixa de renda (`RAIO_X_SHRINK` = 30 pseudo-entrevistados),
+    porque as células de renda alta têm poucos entrevistados (acima de R$ 15.180 são só 62);
+  - na carteira, a afinidade do modelo e a do Raio X são normalizadas e combinadas com peso
+    `RAIO_X_WEIGHT` = 0,5. O resultado volta à escala do modelo, para o piso `MODEL_AFFINITY_FLOOR` não mudar
+    de significado. **As faixas do perfil e o modo proteção não mudam** (D24, D25);
+  - a explicação ganha a seção "Como brasileiros parecidos com você investem", que contrasta o que as
+    pessoas **fazem** com o que o perfil **pede**;
+  - a tabela (`models/raio_x.json`) é **opcional**: sem ela, o app funciona como antes.
+- **Mapeamento P9 → classe** (analogia, como em D25): poupança → liquidez; Tesouro Direto e títulos
+  privados (CDB, LCI, LCA...) → renda fixa; fundos (todos os tipos) → multimercado; ações → ações;
+  previdência → previdência.
+- **LGPD:** só são lidas idade, renda, peso e P9. Cor, religião, orientação sexual e gênero nunca são
+  carregados (mesmo espírito de D11).
+- **Por que não substituir o Santander:** avaliamos e descartamos.
+  - O Raio X não tem tempo de conta, atividade nem segmento, que são as variáveis mais fortes no SHAP. O
+    modelo, a segmentação (D12–D17), os relatórios e os testes teriam de ser refeitos.
+  - O resultado real já validado (AUC 0,846 contra 0,780 do baseline) seria descartado. Com 5,8 mil
+    entrevistados, o teste ficaria com cerca de 20 positivos de previdência.
+  - Posse **declarada** em pesquisa é mais ruidosa que posse registrada pelo banco.
+  - Treinar com o que os brasileiros fazem ensinaria o modelo a sugerir poupança a quem ganha menos. A
+    adequação continua vindo das regras (D4, D22).
+  - A pesquisa **não** classifica o entrevistado como conservador, moderado ou arrojado: a variável
+    `Perfil` está vazia nos microdados e, pelo dicionário, descreve comportamento (sem reserva, caderneta,
+    diversifica), não risco.
+- **Alternativas descartadas:** usar o Raio X para definir as faixas por perfil (ele mostra hábito, não
+  adequação); usar `rendaf` (renda familiar) em vez da renda individual (o app pergunta a renda do
+  usuário); usar o Raio X para os quintis de renda da D27 (só tem faixas largas; a PNAD continua sendo a
+  fonte indicada).

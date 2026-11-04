@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src import config, pipeline
-from tests.fakes import write_fake_raw_csv
+from src import advisor, config, personas, pipeline
+from tests.fakes import write_fake_raio_x, write_fake_raw_csv
 
 SAMPLE = 1_500
 
@@ -17,12 +17,13 @@ SAMPLE = 1_500
 def executado(tmp_path_factory: pytest.TempPathFactory) -> tuple[dict, pipeline.Paths]:
     root = tmp_path_factory.mktemp("pipeline")
     raw = write_fake_raw_csv(root / "train_ver2.csv")
+    raio = write_fake_raio_x(root / "raio_x.xlsx")
     paths = pipeline.Paths.under(root / "saida")
     with pytest.MonkeyPatch.context() as mp:  # menos k avaliados = teste rápido
         mp.setattr(config, "K_RANGE", range(2, 7))
         mp.setattr(config, "K_MIN_BUSINESS", 3)
         mp.setattr(config, "K_MAX_BUSINESS", 6)
-        resumo = pipeline.run(raw, paths, sample_size=SAMPLE)
+        resumo = pipeline.run(raw, paths, sample_size=SAMPLE, raio_x_xlsx=raio)
     return resumo, paths
 
 
@@ -47,6 +48,7 @@ def test_personas_passam_e_resumo_coerente(executado: tuple[dict, pipeline.Paths
     assert resumo["falhas_personas"] == {}
     assert 3 <= resumo["k"] <= 6
     assert 0.5 <= resumo["auc_lgbm"] <= 1.0
+    assert resumo["referencia_br"] is True  # personas rodaram com a referência brasileira (D36)
     assert "todas as verificações passaram" in paths.personas_report.read_text(encoding="utf-8")
 
 
@@ -60,3 +62,12 @@ def test_paths_under_nao_toca_o_projeto(tmp_path: Path) -> None:
     paths = pipeline.Paths.under(tmp_path)
     for campo in pipeline.Paths.__dataclass_fields__:
         assert tmp_path in Path(getattr(paths, campo)).parents
+
+
+def test_sem_raio_x_a_etapa_e_pulada(tmp_path: Path, executado: tuple[dict, pipeline.Paths]) -> None:
+    """Sem os microdados, o advisor funciona só com o modelo."""
+    _, paths = executado
+    art = advisor.carregar_artefatos(paths.seg_model, paths.rec_model, paths.prep_stats, tmp_path / "nao_existe.json")
+    assert art.raio_x is None
+    res = advisor.aconselhar(personas.PERSONAS["Adulto moderado"], art)
+    assert res.carteira.referencia_br is None
