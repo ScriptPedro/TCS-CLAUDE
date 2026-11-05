@@ -9,14 +9,14 @@ Mensagem central, para repetir no início e no fim:
 |---|---|---|---|---|
 | 1 | Problema | 0:45 | Quem tem pouco patrimônio não tem acesso a assessoria. Proposta: assessor virtual explicável | — |
 | 2 | Solução em 1 imagem | 1:00 | Questionário → [IA: segmento + afinidade] + [Regras: suitability] → carteira + explicação | Diagrama de arquitetura (README) |
-| 3 | Dados e premissas | 1:15 | Santander/Kaggle: 13,6 M linhas → 50 mil clientes únicos do último mês. O que o dataset **não** tem vira regra | Funil de `qualidade_dados.md`; D1, D4 |
+| 3 | Dados e premissas | 1:15 | Santander/Kaggle: 13,6 M linhas → 50 mil clientes únicos do último mês. O que o dataset **não** tem vira regra. Referência brasileira: Raio X ANBIMA (5.832 entrevistados) | Funil de `qualidade_dados.md`; `raio_x.md`; D1, D4, D36 |
 | 4 | Preparação | 0:45 | Nulos antes × depois, winsorização, estratificação preservada | Tabelas de `qualidade_dados.md` |
 | 5 | EDA: 3 achados | 1:15 | (a) maioria só tem conta; (b) investir cresce com renda/idade; (c) produtos formam "pacotes" | Figuras 03, 06, 10 |
 | 6 | Segmentação | 1:30 | Escolha de k (regra explícita), perfil dos clusters, estabilidade (ARI ≈ 1), K-Means × GMM | Figuras 11, 13; D15 |
 | 7 | Achado metodológico | 0:45 | StandardScaler numa variável binária rara criou um cluster "só previdência". Correção: escala por tipo | Tabela antes/depois da D14 |
 | 8 | Recomendação | 1:30 | LightGBM por item sem vazamento; comparação com baselines; leave-one-out | Figuras 15, 16; D17, D18 |
 | 9 | Explicabilidade | 0:45 | SHAP: o que pesa em cada produto e em que direção | Figuras 17, 18 |
-| 10 | Suitability e carteira | 1:15 | Pontuação + tetos, modo proteção, "perfil define a faixa, modelo define a posição" | Tabela da D23; D24, D25 |
+| 10 | Suitability e carteira | 1:15 | Pontuação + tetos, modo proteção, "perfil define a faixa; modelo + hábito dos brasileiros definem a posição" | Tabela da D23; D24, D25, D36 |
 | 11 | **Demo ao vivo** | 1:30 | Jovem endividado (escudo, 0% de risco) → investidor experiente (arrojado) | App ou vídeo de reserva |
 | 12 | Validação | 0:30 | ~200 testes automatizados, 3 personas com saídas esperadas, auditoria de viés | `personas.md`, `auditoria_vies.md` |
 | 13 | Limitações e ética | 0:45 | Dados espanhóis de 2016, posse ≠ adequação, LGPD, sexo fora do modelo e auditado | `limitacoes.md` |
@@ -45,7 +45,9 @@ Mensagem central, para repetir no início e no fim:
 | Pergunta | Resposta curta | Referência |
 |---|---|---|
 | Por que não amostrar linhas do arquivo inteiro? | O mesmo cliente apareceria até 17 vezes: clusters inflados e vazamento entre treino e teste | D1 |
-| Dados espanhóis servem para brasileiros? | Parcialmente. Usamos a **posição relativa** de renda (quintis) e mapeamos produtos por analogia. É a principal limitação | D3, D25, limitações §1 |
+| Dados espanhóis servem para brasileiros? | Parcialmente. Usamos a **posição relativa** de renda (quintis), mapeamos produtos por analogia e combinamos a afinidade com a posse real de brasileiros da mesma renda e idade (Raio X ANBIMA). É a principal limitação | D3, D25, D36, limitações §1 |
+| Por que não treinar só com o Raio X? | Não tem tempo de conta nem segmento (as variáveis mais fortes), é pesquisa declarada com 5,8 mil pessoas e ensinaria o modelo a copiar o hábito (poupança). Ele entra como referência, não como alvo | D36 |
+| O Raio X diz quem é conservador ou arrojado? | Não. O perfil continua vindo da nossa pontuação de suitability; o Raio X só mostra o que pessoas parecidas usam | D23, D36 |
 | Onde está a IA, se a carteira vem de regras? | Em três lugares: segmentação (K-Means), afinidade por produto (LightGBM) e explicação (SHAP). As regras garantem adequação, e a IA personaliza dentro delas | D25 |
 | Por que K-Means e não outro algoritmo? | Centróides interpretáveis e escaláveis. Comparamos com GMM pelas mesmas métricas e pela concordância (ARI) | D12 |
 | Como escolheram k? | Maior silhouette dentro da faixa de negócio [4, 8], com cotovelo e BIC como evidência complementar | D15 |

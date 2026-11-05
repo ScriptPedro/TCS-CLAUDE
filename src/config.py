@@ -433,6 +433,49 @@ DEFAULT_ACTIVITY: int = 1            # quem usa o app é tratado como cliente at
 N_RECOMMENDATIONS: int = 3
 MIN_RECOMMEND_PROB: float = 0.10     # abaixo disso o item não é sugerido (sinal fraco demais)
 MIN_ALLOCATION_PCT: int = 3          # classes opcionais com menos que isso são zeradas e redistribuídas
+
+# ---------------------------------------------------------------------------
+# Referência brasileira: Raio X do Investidor Brasileiro (ANBIMA/Datafolha), D36
+# Complementa o modelo (não o substitui): posse real de produtos por faixa de renda e idade.
+# ---------------------------------------------------------------------------
+RAIO_X_RAW_FILE: Path = RAW_DIR / "DADOS BRUTOS RAIO X 2026.xlsx"   # microdados baixados do site da ANBIMA
+RAIO_X_SHEET: str = "VALUE"                                         # respostas codificadas (aba LABEL = texto)
+RAIO_X_FILE: Path = MODELS_DIR / "raio_x.json"                      # tabela de referência usada pelo app
+RAIO_X_REPORT_FILE: Path = REPORTS_DIR / "raio_x.md"
+RAIO_X_SOURCE: str = "Raio X do Investidor Brasileiro, 9ª edição (ANBIMA/Datafolha, 2026)"
+# Únicas colunas lidas. Cor, religião, orientação sexual, gênero etc. NUNCA são carregados (LGPD, D11/D36).
+RAIO_X_ID_COL: str = "nquest"
+RAIO_X_AGE_COL: str = "idade1"        # idade em anos
+RAIO_X_INCOME_COL: str = "renda"      # renda INDIVIDUAL do mês passado (o app pergunta a renda do usuário)
+RAIO_X_WEIGHT_COL: str = "PESOE"      # peso amostral
+RAIO_X_PRODUCT_PREFIX: str = "p9"     # P9 — investimentos que utiliza atualmente (múltipla resposta)
+# Código da resposta P9 → classe brasileira da carteira (analogia documentada em D36).
+# "Fundos" mistura renda fixa, multimercado e ações na pesquisa; fica com multimercado,
+# como o item "fundos" do Santander (ITEM_TO_BR_CLASS).
+RAIO_X_PRODUCT_TO_BR_CLASS: dict[int, str] = {
+    1: "liquidez",       # caderneta de poupança
+    3: "renda_fixa",     # títulos públicos (Tesouro Direto)
+    4: "renda_fixa",     # títulos privados (CDB, LCI, LCA, debêntures...)
+    2: "multimercado",   # fundos de investimento
+    5: "acoes",          # ações na bolsa
+    6: "previdencia",    # previdência privada
+}
+# Código da renda individual → índice da faixa. Os limites da pesquisa são múltiplos do
+# salário mínimo de 2025 (R$ 1.518). Acima de 10 SM há poucos entrevistados: tudo vira uma faixa.
+RAIO_X_INCOME_CODE_TO_BAND: dict[int, int] = {9: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 5, 7: 5}  # 96/97/99 = sem renda/recusa/não sabe
+RAIO_X_INCOME_EDGES: list[float] = [1_518.0, 3_036.0, 4_554.0, 7_590.0, 15_180.0]
+RAIO_X_INCOME_LABELS: list[str] = [
+    "até R$ 1.518", "de R$ 1.519 a R$ 3.036", "de R$ 3.037 a R$ 4.554",
+    "de R$ 4.555 a R$ 7.590", "de R$ 7.591 a R$ 15.180", "acima de R$ 15.180",
+]
+RAIO_X_AGE_EDGES: list[int] = [25, 35, 45, 60]   # mesmas faixas publicadas pela pesquisa
+RAIO_X_AGE_LABELS: list[str] = ["16 a 24 anos", "25 a 34 anos", "35 a 44 anos", "45 a 59 anos", "60 anos ou mais"]
+# Suavização da célula renda × idade em direção à média da faixa de renda (pseudo-entrevistados).
+# Células pequenas (ex.: renda alta e 16–24 anos) ficam perto da média da renda; grandes, perto do próprio dado.
+RAIO_X_SHRINK: float = 30.0
+RAIO_X_MIN_CELL: int = 30             # abaixo disso o texto avisa que o número é aproximado
+# Peso da referência brasileira na afinidade (0 = só o modelo Santander; 1 = só o Raio X)
+RAIO_X_WEIGHT: float = 0.5
 DISCLAIMER: str = (
     "Projeto acadêmico. Esta simulação NÃO é recomendação de investimento e não substitui "
     "a análise de um profissional certificado (CVM/ANBIMA). Modelos treinados com dados de "

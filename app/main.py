@@ -28,7 +28,8 @@ from app import components as ui  # noqa: E402
 from src import config  # noqa: E402
 from src.advisor import Artefatos, Recomendacao, aconselhar, carregar_artefatos  # noqa: E402
 from src.portfolio import (  # noqa: E402
-    DIMENSOES, RESPOSTAS_LEGIVEIS, explicar_classe, por_mil, proximos_passos, resumo_simples, risco_carteira,
+    DIMENSOES, RESPOSTAS_LEGIVEIS, NOMES_POSSE_BR, comparacao_brasil, explicar_classe, passos_calculo, por_mil, proximos_passos,
+    resumo_simples, risco_carteira, rotulo_afinidade,
 )
 
 MODELS_DIR = Path(os.environ.get("ASSESSOR_MODELS_DIR", config.MODELS_DIR))
@@ -218,15 +219,10 @@ def secao_carteira(res: Recomendacao) -> None:
         )
 
     with st.expander("Como os números foram calculados"):
-        st.write(
-            f"1. Suas respostas definem o perfil **{c.perfil_efetivo}**, e o perfil define o mínimo e o máximo de cada classe.\n"
-            "2. Cada classe começa no mínimo.\n"
-            "3. O espaço que sobra vai para as classes mais comuns entre clientes parecidos com você "
-            "(afinidade estimada pelo modelo de IA), sem passar do máximo."
-        )
+        st.markdown(md("\n".join(f"{i}. {p}" for i, p in enumerate(passos_calculo(c), 1))))
         st.dataframe(pd.DataFrame([
             {"Classe": ui.CLASS_SHORT_LABELS[k], "Mínimo": f"{lo:.0f}%", "Máximo": f"{hi:.0f}%",
-             "Afinidade do modelo": f"{c.afinidade[k]:.0%}", "Final": f"{c.alocacao[k]}%"}
+             rotulo_afinidade(c): f"{c.afinidade[k]:.0%}", "Final": f"{c.alocacao[k]}%"}
             for k, (lo, hi) in c.faixas.items()
         ]), hide_index=True, use_container_width=True)
 
@@ -234,6 +230,19 @@ def secao_carteira(res: Recomendacao) -> None:
 def secao_passos(res: Recomendacao) -> None:
     st.subheader("Próximos passos")
     st.markdown(md("\n".join(f"{i}. {p}" for i, p in enumerate(proximos_passos(res.carteira), 1))))
+
+
+def secao_brasil(res: Recomendacao) -> None:
+    """O que brasileiros da mesma renda e idade usam (Raio X ANBIMA, D36)."""
+    ref = res.carteira.referencia_br
+    if ref is None:
+        return
+    st.subheader("Como brasileiros parecidos com você investem")
+    st.caption(f"{ref.faixa_idade} · renda {ref.faixa_renda}")
+    for classe, fracao in sorted(ref.posse.items(), key=lambda kv: -kv[1]):
+        st.progress(min(fracao, 1.0), text=f"{NOMES_POSSE_BR[classe].capitalize()}: {fracao:.0%}")
+    for linha in comparacao_brasil(res.carteira):
+        st.markdown(md(linha))
 
 
 def secao_produtos(res: Recomendacao) -> None:
@@ -273,6 +282,7 @@ def tela_resultado() -> None:
     secao_resumo(res)
     secao_carteira(res)
     secao_passos(res)
+    secao_brasil(res)
     secao_produtos(res)
     secao_detalhes(res)
     c1, c2 = st.columns(2)

@@ -46,7 +46,7 @@ from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, StandardScaler
 from src import config
 from src.eda import save_fig, set_style
 from src.features import add_model_features
-from src.utils import fmt_num, get_logger
+from src.utils import caminho_relativo, fmt_num, get_logger
 
 logger = get_logger(__name__)
 
@@ -439,9 +439,9 @@ class SegmentationResult:
     names: dict[int, dict[str, str]]
 
 
-def build_report(res: SegmentationResult, fig_dir: Path) -> str:
+def build_report(res: SegmentationResult, fig_dir: Path, report_dir: Path = config.REPORTS_DIR) -> str:
     """Relatório Markdown da segmentação."""
-    rel = lambda name: (fig_dir / f"{name}.png").as_posix()  # noqa: E731
+    rel = lambda name: caminho_relativo(fig_dir / f"{name}.png", report_dir)  # noqa: E731
     clusters = "\n".join(
         f"- **{cid} · {v['nome']}** — {v['descricao']}" for cid, v in res.names.items()
     )
@@ -534,7 +534,7 @@ def run(
     plt.close("all")
 
     result = SegmentationResult(metrics, elbow, k, comparison, stab, profile, names)
-    report_path.write_text(build_report(result, fig_dir), encoding="utf-8")
+    report_path.write_text(build_report(result, fig_dir, report_path.parent), encoding="utf-8")
     logger.info("Salvo: %s | %s | %s", model_path, data_path, report_path)
     return result
 

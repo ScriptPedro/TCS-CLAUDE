@@ -10,7 +10,8 @@ Fluxo:
     perfil + saúde ─► faixas_efetivas() → (mín, máx) % por classe brasileira
     faixas + probabilidades do modelo ─► alocar() → carteira em % (soma 100)
 
-As probabilidades do modelo (Etapa 5) só decidem ONDE, dentro da faixa
+As probabilidades do modelo (Etapa 5), combinadas com a posse real de
+brasileiros parecidos (Raio X ANBIMA, D36), só decidem ONDE, dentro da faixa
 permitida pelo perfil, cada classe fica. Elas nunca ultrapassam a faixa.
 """
 
@@ -18,9 +19,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from src import config
 from src.utils import fmt_brl, fmt_num
+
+if TYPE_CHECKING:  # só para tipagem: as regras não dependem da leitura da pesquisa
+    from src.raio_x import ReferenciaBR
 
 INVESTMENT_ITEMS: set[str] = set(config.RECOMMEND_ITEMS)
 
@@ -297,18 +302,35 @@ def faixas_efetivas(
     return perfil_ef, faixas
 
 
-def afinidade_por_classe(probabilidades: dict[str, float] | None) -> dict[str, float]:
-    """Converte P(item) do modelo em afinidade por classe brasileira (mapeamento explícito).
+def afinidade_por_classe(
+    probabilidades: dict[str, float] | None,
+    referencia_br: ReferenciaBR | None = None,
+    peso_br: float = config.RAIO_X_WEIGHT,
+) -> dict[str, float]:
+    """Afinidade por classe brasileira: P(item) do modelo, opcionalmente combinada com o Raio X.
 
-    Sem modelo (None), todas as classes têm a mesma afinidade.
+    Sem modelo (None), todas as classes têm a mesma afinidade do lado do modelo.
+    Com ``referencia_br`` (D36), as duas fontes são normalizadas para somar 1 e
+    combinadas com peso ``peso_br``; o resultado volta à escala do modelo (mesma
+    soma), para o piso ``MODEL_AFFINITY_FLOOR`` manter o mesmo significado.
     """
     classes = list(config.BR_ASSET_CLASSES)
     if probabilidades is None:
-        return {c: 1.0 for c in classes}
-    afinidade = {c: 0.0 for c in classes}
-    for item, classe in config.ITEM_TO_BR_CLASS.items():
-        afinidade[classe] = max(afinidade[classe], float(probabilidades.get(item, 0.0)))
-    return afinidade
+        modelo = {c: 1.0 for c in classes}
+    else:
+        modelo = {c: 0.0 for c in classes}
+        for item, classe in config.ITEM_TO_BR_CLASS.items():
+            modelo[classe] = max(modelo[classe], float(probabilidades.get(item, 0.0)))
+    if referencia_br is None:
+        return modelo
+    soma_m = sum(modelo.values())
+    soma_br = sum(referencia_br.posse.get(c, 0.0) for c in classes)
+    if soma_br <= 0:
+        return modelo
+    escala = soma_m if soma_m > 0 else 1.0
+    norm_m = {c: (modelo[c] / soma_m if soma_m > 0 else 1.0 / len(classes)) for c in classes}
+    return {c: escala * ((1 - peso_br) * norm_m[c] + peso_br * referencia_br.posse.get(c, 0.0) / soma_br)
+            for c in classes}
 
 
 def alocar(faixas: Faixas, afinidade: dict[str, float]) -> dict[str, int]:
@@ -374,19 +396,24 @@ class Carteira:
     afinidade: dict[str, float]
     alocacao: dict[str, int]
     liquidez_extra: int = 0   # pontos extras no mínimo de liquidez (necessidade de resgate)
+    referencia_br: ReferenciaBR | None = None   # brasileiros da mesma renda e idade (Raio X, D36)
 
     def classes_permitidas(self) -> set[str]:
         return {c for c, (_, hi) in self.faixas.items() if hi > 0}
 
 
-def montar_carteira(q: Questionario, probabilidades: dict[str, float] | None = None) -> Carteira:
+def montar_carteira(
+    q: Questionario,
+    probabilidades: dict[str, float] | None = None,
+    referencia_br: ReferenciaBR | None = None,
+) -> Carteira:
     """Pipeline completo de regras: perfil → saúde → faixas → alocação."""
     perfil = calcular_perfil(q)
     saude = avaliar_saude(q)
     perfil_ef, faixas = faixas_efetivas(perfil, saude, q.necessidade_liquidez)
-    afinidade = afinidade_por_classe(probabilidades)
+    afinidade = afinidade_por_classe(probabilidades, referencia_br)
     return Carteira(perfil, saude, perfil_ef, faixas, afinidade, alocar_sem_residuos(faixas, afinidade),
-                    config.LIQUIDITY_NEED_BOOST[q.necessidade_liquidez])
+                    config.LIQUIDITY_NEED_BOOST[q.necessidade_liquidez], referencia_br)
 
 
 # ---------------------------------------------------------------------------
@@ -422,12 +449,13 @@ def explicar_classe(carteira: Carteira, classe: str) -> str:
     frases = [f"No perfil {carteira.perfil_efetivo}, esta classe fica entre {lo:.0f}% e {hi:.0f}%."]
     if classe == "liquidez" and carteira.liquidez_extra:
         frases.append(f"O mínimo subiu {carteira.liquidez_extra} pontos porque você pode precisar do dinheiro antes do prazo.")
+    quem = "pessoas parecidas com você" if carteira.referencia_br else "clientes parecidos com você"
     if pct <= lo + 0.5:
-        frases.append("Ficou no mínimo: entre clientes parecidos com você, esta classe é pouco comum.")
+        frases.append(f"Ficou no mínimo: entre {quem}, esta classe é pouco comum.")
     elif pct >= hi - 0.5:
-        frases.append("Ficou no máximo: é uma das classes mais comuns entre clientes parecidos com você.")
+        frases.append(f"Ficou no máximo: é uma das classes mais comuns entre {quem}.")
     else:
-        frases.append("Ficou no meio da faixa, conforme o quanto clientes parecidos com você usam esta classe.")
+        frases.append(f"Ficou no meio da faixa, conforme o quanto {quem} usam esta classe.")
     return " ".join(frases)
 
 
@@ -482,6 +510,50 @@ def proximos_passos(carteira: Carteira) -> list[str]:
     if not s.modo_protecao:  # no modo proteção já há um "refaça o questionário" acima
         passos.append("Refaça o questionário se sua renda, seus objetivos ou o número de dependentes mudarem.")
     return passos
+
+
+NOMES_POSSE_BR: dict[str, str] = {
+    "liquidez": "poupança", "renda_fixa": "renda fixa (CDB, Tesouro, LCI/LCA)", "multimercado": "fundos de investimento",
+    "acoes": "ações", "previdencia": "previdência privada",
+}
+
+
+def comparacao_brasil(carteira: Carteira) -> list[str]:
+    """O que brasileiros da mesma renda e idade FAZEM × o que o perfil do usuário PEDE (D36)."""
+    ref = carteira.referencia_br
+    if ref is None:
+        return []
+    usos = sorted(ref.posse.items(), key=lambda kv: -kv[1])
+    lista = ", ".join(f"{NOMES_POSSE_BR[c]} {fmt_num(100 * v)}%" for c, v in usos)
+    linhas = [
+        f"Entre brasileiros de {ref.faixa_idade} com renda {ref.faixa_renda}, "
+        f"**{fmt_num(100 * (1 - ref.algum_investimento))}% não usam nenhum desses investimentos**. "
+        f"Quanto cada um é usado nesse grupo: {lista}."
+    ]
+    if ref.amostra_pequena:
+        linhas.append(f"Há poucos entrevistados nessa faixa ({ref.n}); os números são aproximados.")
+    linhas.append(
+        f"Isso mostra o que as pessoas **fazem**, não o que é adequado. A sua carteira segue as faixas do perfil "
+        f"**{carteira.perfil_efetivo}**; o costume dos brasileiros só ajuda a decidir a posição dentro de cada faixa."
+    )
+    linhas.append(f"Fonte: {ref.fonte}.")
+    return linhas
+
+
+def passos_calculo(carteira: Carteira) -> list[str]:
+    """Como a % de cada classe foi calculada (mesmo texto nos dois fronts)."""
+    origem = ("metade pelo modelo de IA e metade pelo que brasileiros da sua renda e idade usam (Raio X ANBIMA)"
+              if carteira.referencia_br else "estimada pelo modelo de IA")
+    return [
+        f"Suas respostas definem o perfil **{carteira.perfil_efetivo}**, e o perfil define o mínimo e o máximo de cada classe.",
+        "Cada classe começa no mínimo.",
+        f"O espaço que sobra vai para as classes mais comuns entre pessoas parecidas com você (afinidade {origem}), "
+        "sem passar do máximo.",
+    ]
+
+
+def rotulo_afinidade(carteira: Carteira) -> str:
+    return "Afinidade (modelo + Raio X)" if carteira.referencia_br else "Afinidade do modelo"
 
 
 # ---------------------------------------------------------------------------
@@ -561,6 +633,10 @@ def gerar_explicacao(
     if fora:
         linhas.append("- Fora da carteira: " + ", ".join(config.CLASS_INFO[c]["nome"] for c in fora) + ". "
                       + explicar_classe(carteira, fora[0]))
+
+    if carteira.referencia_br is not None:
+        linhas.append("\n### Como brasileiros parecidos com você investem")
+        linhas += comparacao_brasil(carteira)
 
     linhas.append("\n### Próximos passos")
     linhas += [f"{i}. {passo}" for i, passo in enumerate(proximos_passos(carteira), 1)]

@@ -11,7 +11,8 @@ from fastapi.testclient import TestClient
 
 from api import main as api
 from app import components as ui
-from src import config, recommender, segmentation
+from src import config, raio_x, recommender, segmentation
+from tests.fakes import write_fake_raio_x
 from tests.test_recommender import _signal_data
 
 MODERADO = {
@@ -37,6 +38,7 @@ def models_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     recommender.run(tmp / "clusters.parquet", tmp / "recommender.joblib", tmp / "rec.md", tmp / "figs")
     edges = pd.qcut(data["renta"], 5, retbins=True)[1].tolist()
     (tmp / "prep_stats.json").write_text(json.dumps({"income_quantile_edges": edges}), encoding="utf-8")
+    raio_x.run(write_fake_raio_x(tmp / "raio_x.xlsx"), tmp / config.RAIO_X_FILE.name, tmp / "raio_x.md")
     return tmp
 
 
@@ -71,6 +73,12 @@ def test_recomendacao_moderada(client: TestClient) -> None:
     assert res["saude"]["modo_protecao"] is False
     for c in res["carteira"]:
         assert c["minimo"] <= c["pct"] <= c["maximo"] or c["pct"] == 0
+    ref = res["referencia_br"]  # raio_x.json na pasta de modelos (D36)
+    assert ref["faixa_idade"] == "35 a 44 anos" and ref["entrevistados"] >= 0
+    assert {p["classe"] for p in ref["posse"]} == set(config.BR_ASSET_CLASSES)
+    assert "Como brasileiros parecidos com você investem" in res["texto"]
+    assert ref["linhas"] and [p["fracao"] for p in ref["posse"]] == sorted((p["fracao"] for p in ref["posse"]), reverse=True)
+    assert "Raio X" in res["calculo"]["rotulo_afinidade"] and len(res["calculo"]["passos"]) == 3
 
 
 def test_recomendacao_endividada_ativa_modo_protecao(client: TestClient) -> None:

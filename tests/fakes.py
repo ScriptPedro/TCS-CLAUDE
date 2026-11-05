@@ -51,3 +51,43 @@ def write_fake_raw_csv(path: Path, n_clients: int = 2_500, seed: int = 0) -> Pat
     out = pd.concat([*frames, frames[-1].head(3)], ignore_index=True)  # 3 duplicatas no snapshot
     out.to_csv(path, index=False)
     return path
+
+
+def write_fake_raio_x(path: Path, n: int = 600, seed: int = 0) -> Path:
+    """Microdados sintéticos no formato da aba VALUE do Raio X (ANBIMA).
+
+    Reproduz: códigos de renda fora de ordem (9 = faixa mais baixa), 96/97/99
+    (sem renda, recusa, não sabe), múltipla resposta espalhada em p9a, p9b, p9c,
+    peso amostral e colunas sensíveis (que NÃO podem ser lidas). Quem tem renda
+    mais alta usa mais renda fixa e ações, como na pesquisa real.
+    """
+    rng = np.random.default_rng(seed)
+    renda = rng.choice([9, 1, 2, 3, 4, 5, 96, 97], size=n, p=[0.3, 0.25, 0.15, 0.1, 0.08, 0.04, 0.05, 0.03])
+    nivel = pd.Series(renda).map({9: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5}).fillna(0).to_numpy()
+    escolhas = np.zeros((n, 3), dtype=int)
+    for k in range(n):
+        produtos = []
+        if rng.random() < 0.25:
+            produtos.append(1)                          # poupança
+        if rng.random() < 0.04 + 0.08 * nivel[k]:
+            produtos.append(4)                          # títulos privados
+        if rng.random() < 0.01 + 0.04 * nivel[k]:
+            produtos.append(5)                          # ações
+        produtos = produtos or [96]                     # não investe
+        escolhas[k, : len(produtos)] = produtos
+    df = pd.DataFrame({
+        "nquest": np.arange(n) + 1000,
+        "idade1": rng.integers(16, 90, size=n),
+        "genero": rng.integers(1, 3, size=n),
+        "p9a": escolhas[:, 0], "p9b": escolhas[:, 1], "p9c": escolhas[:, 2],
+        "p91": 7,                                      # não é coluna de produto (só p9 + letra)
+        "renda": renda,
+        "cor": rng.integers(1, 6, size=n),
+        "religiao1": rng.integers(1, 9, size=n),
+        "PESOE": rng.uniform(0.5, 1.5, size=n).round(3),
+    })
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(path) as xl:
+        df.astype(str).to_excel(xl, sheet_name="LABEL", index=False)   # aba de rótulos (não usada)
+        df.to_excel(xl, sheet_name=config.RAIO_X_SHEET, index=False)
+    return path

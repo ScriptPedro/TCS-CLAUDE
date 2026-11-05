@@ -28,6 +28,7 @@ from pydantic import BaseModel
 
 from app import components as ui
 from src import config
+from src import portfolio as pf
 from src.advisor import Artefatos, Recomendacao, aconselhar, carregar_artefatos
 from src.portfolio import (
     DIMENSOES, RESPOSTAS_LEGIVEIS, explicar_classe, por_mil, proximos_passos, resumo_simples, risco_carteira,
@@ -147,6 +148,17 @@ def serializar(res: Recomendacao, avisos: list[str]) -> dict[str, Any]:
         "saude": {"modo_protecao": c.saude.modo_protecao, "alertas": c.saude.alertas},
         "carteira": [_classe(res, k) for k in classes],
         "proximos_passos": proximos_passos(c),
+        "referencia_br": None if c.referencia_br is None else {
+            "faixa_renda": c.referencia_br.faixa_renda,
+            "faixa_idade": c.referencia_br.faixa_idade,
+            "entrevistados": c.referencia_br.n,
+            "algum_investimento": c.referencia_br.algum_investimento,
+            "posse": [{"classe": k, "nome": pf.NOMES_POSSE_BR[k][:1].upper() + pf.NOMES_POSSE_BR[k][1:], "fracao": v}
+                      for k, v in sorted(c.referencia_br.posse.items(), key=lambda kv: -kv[1])],
+            "fonte": c.referencia_br.fonte,
+            "linhas": pf.comparacao_brasil(c),
+        },
+        "calculo": {"passos": pf.passos_calculo(c), "rotulo_afinidade": pf.rotulo_afinidade(c)},
         "produtos": [
             {
                 "rotulo": p["rotulo"],

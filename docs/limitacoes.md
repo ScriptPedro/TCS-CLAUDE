@@ -8,7 +8,8 @@
 
 | Limitação | Impacto | O que fizemos |
 |---|---|---|
-| **Clientes espanhóis, 2015–2016** | Comportamento, renda e oferta de produtos diferentes do Brasil atual (ex.: depósito espanhol ≠ CDB) | Renda em quintis (D3); mapeamento explícito Santander → classe BR como **analogia** (D25) |
+| **Clientes espanhóis, 2015–2016** | Comportamento, renda e oferta de produtos diferentes do Brasil atual (ex.: depósito espanhol ≠ CDB) | Renda em quintis (D3); mapeamento explícito Santander → classe BR como **analogia** (D25); afinidade combinada com a posse real de brasileiros da mesma renda e idade (Raio X ANBIMA, D36) |
+| **Referência brasileira é pesquisa (Raio X)** | Posse **declarada**, 5.832 entrevistados, poucos casos nas rendas altas (62 acima de R$ 15.180); "fundos" mistura tipos; não há perfil de risco | Só ajusta a posição dentro da faixa, nunca o perfil nem as faixas; células pequenas suavizadas pela média da renda; o texto avisa quando a amostra é pequena (D36) |
 | **Um único banco** | A posse reflete a **política comercial do Santander** (o que foi vendido), não necessariamente o que era bom para o cliente | Modelo limitado a ajustar pesos dentro das faixas de suitability (D25) |
 | **Snapshot único (2016-05-28)** | Não modelamos "próximo produto" ao longo do tempo; o MAP@7 não é comparável ao da competição | Avaliação leave-one-out como análogo (D18) |
 | **Sem risco, retorno ou preço de ativos** | Não há otimização de carteira (média-variância); as faixas são fixas por perfil | Faixas documentadas e testadas; otimização fica como próximo passo |
@@ -47,7 +48,8 @@
 | **Histórico / comercial** | A posse reflete o que o banco ofereceu a cada perfil | Faixas de suitability limitam o efeito do modelo |
 | **Proxy de atributo protegido** | `sexo` não é feature, mas renda e segmento podem se correlacionar com ele | `sexo` fora dos modelos (D11) + **auditoria** com regra dos 4/5 (`reports/auditoria_vies.md`) |
 | **Etário** | Idade pesa na pontuação e nas features | Uso **legítimo** (horizonte de investimento), auditado só para transparência; o peso da idade na pontuação é baixo (máx. 2 de 14 pontos) |
-| **Geográfico / cultural** | Padrões espanhóis aplicados a brasileiros | Declarado no aviso legal do app |
+| **Geográfico / cultural** | Padrões espanhóis aplicados a brasileiros | Declarado no aviso legal do app; referência brasileira (Raio X) na afinidade e na explicação (D36) |
+| **Hábito ≠ adequação (Raio X)** | Brasileiros de renda mais baixa usam quase só poupança; copiar o hábito reforçaria isso | O Raio X tem peso de 50% só **dentro** das faixas do perfil, e o texto diz explicitamente que o costume não é recomendação (D36) |
 | **Imputação** | Grupos com mais renda faltante recebem a mediana do grupo | Flag de imputação + relatório de qualidade |
 | **Sobrevivência** | O snapshot só contém quem ainda era cliente em 2016 | Declarado como limitação |
 
@@ -61,6 +63,9 @@
   a pontuação por pergunta, as faixas, os pesos do modelo e os fatores SHAP de cada produto.
 - **Dados de treino:** a base do Kaggle é anonimizada (`ncodpers` é um código, sem PII). As regras da
   competição **não permitem redistribuir** os dados, por isso o `.gitignore` exclui `data/`.
+- **Raio X (ANBIMA):** os microdados são anônimos, mas contêm dados **sensíveis** (cor, religião,
+  orientação sexual). `src/raio_x.py` lê apenas idade, renda, peso amostral e produtos; as demais colunas
+  nunca entram na memória. O arquivo fica em `data/raw/` (não versionado); só a tabela agregada é usada.
 - **Regulação financeira:** recomendação de investimento é atividade regulada (CVM) e exige profissional
   certificado. O app exibe aviso legal permanente e se apresenta como **simulação acadêmica**.
 - **Prudência por padrão:** em caso de conflito entre a soma de pontos e uma resposta restritiva, vale a
@@ -70,7 +75,9 @@
 
 1. **Rodar com os dados reais** e revisar os nomes dos clusters, as figuras e os números dos slides.
 2. **Substituir os limites de renda** pelos quintis oficiais da PNAD Contínua (IBGE).
-3. **Dados brasileiros** (ex.: Open Finance, com consentimento) para eliminar a analogia Espanha → Brasil.
+3. **Dados brasileiros de posse registrada** (ex.: Open Finance, com consentimento) para treinar o modelo
+   sem a analogia Espanha → Brasil. O Raio X (D36) já traz a referência brasileira, mas é pesquisa
+   declarada e pequena demais para treinar.
 4. **Modelo temporal** ("próximo produto" entre meses), usando os 17 meses do arquivo original.
 5. **Otimização de carteira** com retornos e riscos históricos de índices brasileiros (CDI, IMA-B, Ibovespa).
 6. **Calibração explícita** das probabilidades (isotônica/Platt) e ajuste de hiperparâmetros (Optuna).
