@@ -122,7 +122,7 @@ export default function Assessor({ inicial, resultadoSalvo, onResultado, onSair 
             onEnviar={enviar}
           />
         )}
-        {resultado && tela === "resultado" && <Resultado r={resultado} onAjustar={ajustar} onRecomecar={recomecar} />}
+        {resultado && tela === "resultado" && <Resultado r={resultado} respostas={respostas} onAjustar={ajustar} onRecomecar={recomecar} />}
 
         <p className="rodape">
           Modelos treinados com dados do Santander Product Recommendation (Kaggle). Projeto acadêmico de IA Aplicada.

@@ -1,4 +1,4 @@
-import type { Questionario, Respostas, Resultado } from "./types";
+import type { InfoConversa, Questionario, RespostaConversa, Respostas, Resultado } from "./types";
 
 export class ErroApi extends Error {
   constructor(public erros: string[]) {
@@ -31,4 +31,21 @@ export async function pedirRecomendacao(respostas: Respostas): Promise<Resultado
     body: JSON.stringify({ respostas }),
   });
   return ler<Resultado>(resp);
+}
+
+export async function buscarInfoConversa(): Promise<InfoConversa> {
+  return ler<InfoConversa>(await fetch("/api/conversa"));
+}
+
+export async function perguntarAssistente(
+  respostas: Respostas,
+  historico: { papel: string; texto: string }[],
+  pergunta: string,
+): Promise<RespostaConversa> {
+  const resp = await fetch("/api/conversa", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ respostas, historico, pergunta }),
+  });
+  return ler<RespostaConversa>(resp);
 }

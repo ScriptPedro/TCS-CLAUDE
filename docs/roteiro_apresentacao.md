@@ -17,7 +17,7 @@ Mensagem central, para repetir no início e no fim:
 | 8 | Recomendação | 1:30 | LightGBM por item sem vazamento; comparação com baselines; leave-one-out | Figuras 15, 16; D17, D18 |
 | 9 | Explicabilidade | 0:45 | SHAP: o que pesa em cada produto e em que direção | Figuras 17, 18 |
 | 10 | Suitability e carteira | 1:15 | Pontuação + tetos, modo proteção, "perfil define a faixa; modelo + hábito dos brasileiros definem a posição" | Tabela da D23; D24, D25, D36 |
-| 11 | **Demo ao vivo** | 1:30 | Jovem endividado (escudo, 0% de risco) → investidor experiente (arrojado) | App ou vídeo de reserva |
+| 11 | **Demo ao vivo** | 1:30 | Jovem endividado (escudo, 0% de risco) → no chat, "e se eu quitar o cartão?" → investidor experiente (arrojado) | App ou vídeo de reserva |
 | 12 | Validação | 0:30 | ~200 testes automatizados, 3 personas com saídas esperadas, auditoria de viés | `personas.md`, `auditoria_vies.md` |
 | 13 | Limitações e ética | 0:45 | Dados espanhóis de 2016, posse ≠ adequação, LGPD, sexo fora do modelo e auditado | `limitacoes.md` |
 | 14 | Conclusão e próximos passos | 0:30 | Repetir a mensagem central; dados brasileiros, modelo temporal, otimização | — |
@@ -58,5 +58,7 @@ Mensagem central, para repetir no início e no fim:
 | Por que early stopping pela log loss? | A AUC estabilizava cedo e deixava as probabilidades descalibradas, o que atrapalha comparar itens diferentes | D19 |
 | O sistema discrimina por sexo? | `sexo` não entra em nenhum modelo, e o app não o pergunta. Mesmo assim auditamos proxies com a regra dos 4/5 | D11, `auditoria_vies.md` |
 | E a LGPD? | Minimização (sem PII), sem armazenamento, explicação de cada decisão (art. 20) e aviso legal | limitações §5 |
-| Por que template e não ChatGPT/LLM no texto? | Determinístico e auditável: o texto nunca contradiz os números. LLM é próximo passo, só para o tom | D26 |
+| Por que template e não ChatGPT/LLM no texto? | O texto principal continua por template (determinístico e auditável). O LLM entra só no chat, para explicar e simular "e se", e os números vêm sempre do assessor | D26, D37 |
+| O chat com IA não pode inventar números? | Ele recebe só os números calculados e usa uma ferramenta que roda o assessor de novo; a tabela da simulação vem direto da API, não do texto do modelo | D37 |
+| E a privacidade do chat no Gemini gratuito? | Só saem faixas (nunca idade exata), a tela avisa para não escrever dados pessoais e o chat é opcional; em produção, plano pago + consentimento | D37, limitações §5 |
 | O que fariam com mais tempo? | Dados brasileiros, modelo temporal com os 17 meses, otimização média-variância, calibração | limitações §6 |

@@ -18,6 +18,11 @@
 
 ## 2. Limitações dos modelos
 
+- **Assessor conversacional (D37):** o modelo de linguagem pode errar ao reescrever um número ou
+  extrapolar. Mitigação: instruções rígidas, temperatura baixa, números vindos só do contexto e da
+  ferramenta, e a tabela de simulação exibida ao lado do texto, direto da API. Não há verificação
+  automática de cada número citado no texto.
+
 - **Correlação, não causalidade:** "40% dos clientes parecidos têm fundos" não significa que fundos sejam
   adequados para o usuário. Por isso o texto do app diz "clientes com perfil parecido **têm**", e não
   "você **deve** ter".
@@ -66,6 +71,11 @@
 - **Raio X (ANBIMA):** os microdados são anônimos, mas contêm dados **sensíveis** (cor, religião,
   orientação sexual). `src/raio_x.py` lê apenas idade, renda, peso amostral e produtos; as demais colunas
   nunca entram na memória. O arquivo fica em `data/raw/` (não versionado); só a tabela agregada é usada.
+- **Assessor conversacional (Gemini, D37):** as perguntas do chat e um resumo da recomendação vão para o
+  Google. No **plano gratuito**, o Google pode usar esse conteúdo para melhorar os produtos dele e pessoas
+  podem revisá-lo. Por isso só saem faixas (nunca idade exata ou valores digitados), a tela avisa para não
+  escrever dados pessoais, e o chat é opcional (desligado sem `GEMINI_API_KEY`). Em produção, seria
+  obrigatório o plano pago, que não usa os dados, e um termo de consentimento.
 - **Regulação financeira:** recomendação de investimento é atividade regulada (CVM) e exige profissional
   certificado. O app exibe aviso legal permanente e se apresenta como **simulação acadêmica**.
 - **Prudência por padrão:** em caso de conflito entre a soma de pontos e uma resposta restritiva, vale a
@@ -81,5 +91,6 @@
 4. **Modelo temporal** ("próximo produto" entre meses), usando os 17 meses do arquivo original.
 5. **Otimização de carteira** com retornos e riscos históricos de índices brasileiros (CDI, IMA-B, Ibovespa).
 6. **Calibração explícita** das probabilidades (isotônica/Platt) e ajuste de hiperparâmetros (Optuna).
-7. **Texto por LLM** (ex.: Claude) a partir do template, sem permissão para alterar números.
+7. ~~Texto por LLM~~: feito como assessor conversacional (D37). Próximo passo: avaliar as respostas do
+   modelo com um conjunto fixo de perguntas (números citados × números do assessor).
 8. **Monitoramento** em produção: drift das features, taxa de modo proteção e auditoria de viés periódica.

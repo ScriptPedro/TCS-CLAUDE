@@ -6,6 +6,7 @@ Expõe o mesmo fluxo do app Streamlit, sem duplicar lógica: as perguntas vêm d
     GET  /api/saude          → os modelos estão carregados?
     GET  /api/questionario   → etapas, perguntas, opções e respostas padrão
     POST /api/recomendacao   → respostas do formulário → recomendação completa
+    POST /api/conversa       → pergunta sobre a carteira → resposta do assistente (D37)
 
 Uso (na raiz do projeto):
     uvicorn api.main:app --reload --port 8000
@@ -26,6 +27,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from app import assistente
 from app import components as ui
 from src import config
 from src import portfolio as pf
@@ -92,8 +94,8 @@ def saude() -> dict[str, Any]:
     try:
         obter_artefatos()
     except FileNotFoundError as exc:
-        return {"modelos": False, "erro": str(exc)}
-    return {"modelos": True, "erro": None}
+        return {"modelos": False, "erro": str(exc), "assistente": False}
+    return {"modelos": True, "erro": None, "assistente": assistente.obter_provedor() is not None}
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +186,42 @@ def recomendacao(body: Respostas) -> dict[str, Any]:
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail={"erros": [f"Modelos não encontrados. {exc}"]}) from exc
     return serializar(aconselhar(q, artefatos), ui.avisos_de_consistencia(q))
+
+
+# ---------------------------------------------------------------------------
+# Assessor conversacional (D37)
+# ---------------------------------------------------------------------------
+class Conversa(BaseModel):
+    respostas: dict[str, Any]
+    historico: list[dict[str, str]] = []
+    pergunta: str
+
+
+@app.get("/api/conversa")
+def conversa_info() -> dict[str, Any]:
+    """O chat está ativo? Também devolve o aviso de privacidade e sugestões de perguntas."""
+    return {
+        "ativo": assistente.obter_provedor() is not None,
+        "aviso": config.ASSISTANT_NOTICE,
+        "sugestoes": config.ASSISTANT_SUGGESTIONS,
+        "max_caracteres": config.ASSISTANT_MAX_QUESTION_CHARS,
+    }
+
+
+@app.post("/api/conversa")
+def conversa(body: Conversa) -> dict[str, Any]:
+    try:
+        artefatos = obter_artefatos()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail={"erros": [f"Modelos não encontrados. {exc}"]}) from exc
+    try:
+        r = assistente.conversar(body.respostas, body.historico, body.pergunta, artefatos)
+    except ValueError as exc:
+        erros = exc.args[0] if exc.args and isinstance(exc.args[0], list) else [str(exc)]
+        raise HTTPException(status_code=422, detail={"erros": erros}) from exc
+    except assistente.AssistenteIndisponivel as exc:
+        raise HTTPException(status_code=503, detail={"erros": [str(exc)]}) from exc
+    return {"resposta": r.texto, "simulacoes": r.simulacoes, "aviso": config.DISCLAIMER}
 
 
 # ---------------------------------------------------------------------------

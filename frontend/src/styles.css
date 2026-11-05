@@ -388,3 +388,20 @@ th { font-weight: 700; color: var(--grafite); }
 .referencia-br { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
 .referencia-br li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
 .referencia-br li .medidor { grid-column: 1 / -1; }
+
+/* Assessor conversacional (D37) */
+.conversa .sugestoes { margin: 1rem 0; }
+.conversa .sugestoes .chip { text-align: left; }
+.mensagens { display: grid; gap: 0.75rem; margin: 1rem 0; }
+.mensagem { max-width: 90%; padding: 0.75rem 1rem; border-radius: 12px; overflow-wrap: anywhere; }
+.mensagem p { margin: 0.25rem 0; }
+.mensagem.usuario { justify-self: end; background: var(--tinta); color: var(--papel); }
+.mensagem.assistente { justify-self: start; background: var(--superficie); border: 1px solid var(--linha); }
+.mensagem.pensando { color: var(--grafite); }
+.simulacao { border-top: 1px solid var(--linha); margin-top: 0.75rem; padding-top: 0.5rem; }
+.caixa-pergunta { display: flex; gap: 0.5rem; }
+.caixa-pergunta input {
+  flex: 1; min-width: 0; min-height: 48px; padding: 0 0.875rem; font: inherit; color: var(--tinta);
+  background: var(--superficie); border: 1.5px solid var(--linha-forte); border-radius: 8px;
+}
+.visualmente-oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -374,3 +374,36 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
   adequação); usar `rendaf` (renda familiar) em vez da renda individual (o app pergunta a renda do
   usuário); usar o Raio X para os quintis de renda da D27 (só tem faixas largas; a PNAD continua sendo a
   fonte indicada).
+
+## D37 — Assessor conversacional com LLM: explica e simula, nunca calcula
+
+- **Contexto:** a carteira já vem explicada por template (D26, D35), mas o usuário não consegue perguntar
+  "por quê?" nem "e se eu quitar o cartão?". A D26 deixou "texto por LLM, sem permissão para alterar
+  números" como próximo passo.
+- **Decisão:** um chat na tela de resultado (React, Streamlit e `POST /api/conversa`), com o **Google
+  Gemini** pelo SDK `google-genai`, escolhido pelo plano gratuito (poucas requisições por usuário).
+  - **Números só do código:** o modelo recebe um CONTEXTO montado com a saída de `aconselhar()` (perfil,
+    faixas, carteira, produtos, fatores SHAP, referência do Raio X) e tem **uma ferramenta**,
+    `simular_cenario`, que muda respostas do questionário e roda o assessor de novo. As instruções proíbem
+    inventar valores, indicar ativos específicos ou sair das faixas do perfil.
+  - **Sem execução automática de ferramentas:** o laço é nosso (`app/assistente.py`), com no máximo
+    `ASSISTANT_MAX_TOOL_ROUNDS` rodadas; os argumentos são validados contra as opções do formulário
+    (valor inventado volta ao modelo como erro).
+  - **Fornecedor isolado:** `src/llm.py` é o único arquivo que conhece o Gemini. Trocar de fornecedor é
+    escrever outra classe com o método `gerar`.
+  - **Opcional:** sem `GEMINI_API_KEY`, sem internet ou com o limite do plano estourado, o chat avisa e o
+    resto do app funciona igual (importante para a demo offline).
+  - **Privacidade:** o modelo recebe faixas (renda "R$ 4.000 a R$ 7.000", "35 a 44 anos"), nunca a idade
+    exata; a ferramenta não aceita mudar a idade.
+- **LGPD e plano gratuito:** pelos termos do Google, no plano gratuito o conteúdo enviado pode ser usado
+  para melhorar os produtos dele e revisado por pessoas (a exceção vale só para Europa, Reino Unido e
+  Suíça). Mitigação: só faixas e números calculados saem do servidor, e a tela avisa o usuário para não
+  escrever dados pessoais. Em produção, o plano pago (que não usa os dados) seria obrigatório.
+- **Dependências:** `google-genai==2.32.0`, que exige `httpx>=0.28.1` (antes fixado em 0.27.2); a API e
+  o `TestClient` do FastAPI foram testados com a versão nova.
+- **Testes sem rede:** um provedor falso roteiriza as respostas do modelo (pedir ferramenta, responder,
+  estourar o limite de rodadas, falhar com 429/403/500).
+- **Descartados:** deixar o LLM calcular ou ajustar a carteira (perderia a auditabilidade da D25 e a
+  adequação da D23); um agente que roda experimentos de ML sozinho para "otimizar" o modelo (Optuna e
+  calibração fazem isso de forma reprodutível, ver limitações §6); execução automática de funções do SDK
+  (sem controle de quantas vezes nem com quais argumentos).

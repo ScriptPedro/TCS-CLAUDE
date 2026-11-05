@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:  # permite "streamlit run app/main.py" a partir da
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from app import assistente  # noqa: E402
 from app import components as ui  # noqa: E402
 from src import config  # noqa: E402
 from src.advisor import Artefatos, Recomendacao, aconselhar, carregar_artefatos  # noqa: E402
@@ -99,7 +100,7 @@ def finalizar() -> None:
 
 def ajustar_respostas() -> None:
     """Volta ao questionário mantendo as respostas, para o usuário mudar só o que quiser."""
-    for chave in ("resultado", "avisos", "erros"):
+    for chave in ("resultado", "avisos", "erros", "conversa"):
         st.session_state.pop(chave, None)
     st.session_state.etapa = 0
 
@@ -274,6 +275,48 @@ def secao_detalhes(res: Recomendacao) -> None:
         st.markdown(md(res.texto))
 
 
+def _mostrar_mensagem(m: dict) -> None:
+    with st.chat_message("user" if m["papel"] == "usuario" else "assistant"):
+        st.markdown(md(m["texto"]))
+        for s in m.get("simulacoes", []):
+            st.caption(md("**Cenário simulado:** " + " · ".join(f"{k} {v}" for k, v in s["mudancas"].items())
+                          + f" — perfil {s['perfil_antes']} → {s['perfil_depois']}"))
+            st.dataframe(pd.DataFrame([{"Classe": c["nome"], "Hoje": f"{c['antes']}%", "No cenário": f"{c['depois']}%"}
+                                       for c in s["carteira"]]), hide_index=True, use_container_width=True)
+
+
+def secao_conversa() -> None:
+    """Assessor conversacional (D37): o Gemini explica e simula; os números vêm do assessor."""
+    st.subheader("Pergunte ao assessor")
+    provedor = assistente.obter_provedor()
+    if provedor is None:
+        st.caption(f"Assistente desativado: defina a variável de ambiente {config.LLM_API_KEY_ENV} para ativar.")
+        return
+    st.caption(config.ASSISTANT_NOTICE)
+    historico: list[dict] = st.session_state.setdefault("conversa", [])
+    for m in historico:
+        _mostrar_mensagem(m)
+    pergunta = st.chat_input("Pergunte sobre a sua carteira", max_chars=config.ASSISTANT_MAX_QUESTION_CHARS,
+                             key="chat_pergunta")
+    if not pergunta:
+        return
+    novas = [{"papel": "usuario", "texto": pergunta}]
+    _mostrar_mensagem(novas[0])
+    try:
+        with st.spinner("Pensando…"):
+            r = assistente.conversar(st.session_state.respostas, historico, pergunta,
+                                     obter_artefatos(str(MODELS_DIR)), provedor)
+    except ValueError as exc:
+        st.error(" ".join(exc.args[0]) if exc.args and isinstance(exc.args[0], list) else str(exc))
+        return
+    except assistente.AssistenteIndisponivel as exc:
+        st.error(str(exc))
+        return
+    novas.append({"papel": "assistente", "texto": r.texto, "simulacoes": r.simulacoes})
+    _mostrar_mensagem(novas[1])
+    historico.extend(novas)
+
+
 def tela_resultado() -> None:
     res: Recomendacao = st.session_state.resultado
     st.header("Sua recomendação")
@@ -284,6 +327,7 @@ def tela_resultado() -> None:
     secao_passos(res)
     secao_brasil(res)
     secao_produtos(res)
+    secao_conversa()
     secao_detalhes(res)
     c1, c2 = st.columns(2)
     c1.button("✏️ Ajustar respostas", on_click=ajustar_respostas, key="btn_ajustar", use_container_width=True)

@@ -201,3 +201,31 @@ def test_sem_modelos_mostra_instrucoes(tmp_path: Path, monkeypatch: pytest.Monke
     at.run()
     assert any("Modelos não encontrados" in e.value for e in at.error)
     assert "src.segmentation" in at.code[0].value
+
+
+def test_conversa_no_resultado(app: AppTest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Chat do assessor (D37) com provedor falso: pergunta → simulação → resposta na tela."""
+    from app import assistente
+    from src.llm import ChamadaFerramenta, RespostaLLM
+
+    roteiro = [RespostaLLM("", [ChamadaFerramenta("simular_cenario", {"prazo": "mais_de_5_anos"}, "c1")]),
+               RespostaLLM("Com mais prazo, o perfil pode subir.", [])]
+
+    class Falso:
+        def gerar(self, *_):
+            return roteiro.pop(0)
+
+    monkeypatch.setattr(assistente, "obter_provedor", lambda: Falso())
+    _preencher(app, MODERADO)
+    assert "Pergunte ao assessor" in [s.value for s in app.subheader]
+    app.chat_input(key="chat_pergunta").set_value("E se eu esperar mais?").run()
+    assert not app.exception
+    textos = " ".join(m.value for m in app.markdown)
+    assert "E se eu esperar mais?" in textos and "Com mais prazo, o perfil pode subir." in textos
+    assert len(app.session_state["conversa"]) == 2 and app.session_state["conversa"][1]["simulacoes"]
+
+
+def test_conversa_desativada_sem_chave(app: AppTest, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(config.LLM_API_KEY_ENV, raising=False)
+    _preencher(app, MODERADO)
+    assert any(config.LLM_API_KEY_ENV in c.value for c in app.caption)

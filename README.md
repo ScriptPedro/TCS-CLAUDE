@@ -39,11 +39,12 @@ Projeto final de IA Aplicada (BFSI). O usuário responde a um questionário e re
 assessor-investimentos/
 ├── app/
 │   ├── main.py            # Etapa 7 — Streamlit (layout e navegação)
-│   └── components.py      # validação do formulário, gráfico (testáveis sem Streamlit)
+│   ├── components.py      # validação do formulário, gráfico (testáveis sem Streamlit)
+│   └── assistente.py      # chat: contexto, ferramenta simular_cenario e laço da conversa (D37)
 ├── data/raw/              # train_ver2.csv e microdados do Raio X (não versionados)
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
 ├── docs/
-│   ├── decisoes.md        # D1–D36: cada decisão técnica e as alternativas descartadas
+│   ├── decisoes.md        # D1–D37: cada decisão técnica e as alternativas descartadas
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
@@ -59,6 +60,7 @@ assessor-investimentos/
 │   ├── segmentation.py    # Etapa 4 — K-Means × GMM
 │   ├── recommender.py     # Etapa 5 — LightGBM, baselines, métricas, SHAP
 │   ├── raio_x.py          # referência brasileira: posse por renda × idade (Raio X ANBIMA, D36)
+│   ├── llm.py             # acesso ao Gemini (único arquivo que conhece o fornecedor, D37)
 │   ├── portfolio.py       # Etapa 6 — suitability e carteira (SEM ML)
 │   ├── advisor.py         # orquestra questionário → modelos → regras
 │   ├── personas.py        # Etapa 8 — personas com saídas esperadas
@@ -104,6 +106,22 @@ A carteira usa também a posse real de produtos entre brasileiros da mesma renda
 3. Rode `python -m src.raio_x` (ou o pipeline completo). Isso gera `models/raio_x.json` e `reports/raio_x.md`.
 
 Sem esse arquivo o app funciona normalmente, só com o modelo.
+
+## Assessor conversacional (Gemini, opcional)
+
+Na tela de resultado há um chat para perguntar sobre a carteira ("por que tenho só 11% em ações?", "e se
+eu quitar o cartão?"). O modelo explica e simula, mas os números vêm sempre do assessor (D37).
+
+1. Crie uma chave gratuita no [Google AI Studio](https://aistudio.google.com).
+2. Antes de subir a API ou o Streamlit, no mesmo terminal:
+
+```powershell
+$env:GEMINI_API_KEY = "sua-chave"
+```
+
+Opcional: `$env:GEMINI_MODEL = "outro-modelo"` (padrão: `gemini-flash-latest`). Nunca coloque a chave no
+código nem no git. Sem a chave, o chat aparece como desativado e o resto funciona normalmente.
+No plano gratuito o Google pode usar as perguntas para melhorar os produtos dele: veja `docs/limitacoes.md` §5.
 
 ## Executando
 

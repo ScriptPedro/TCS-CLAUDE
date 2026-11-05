@@ -476,6 +476,31 @@ RAIO_X_SHRINK: float = 30.0
 RAIO_X_MIN_CELL: int = 30             # abaixo disso o texto avisa que o número é aproximado
 # Peso da referência brasileira na afinidade (0 = só o modelo Santander; 1 = só o Raio X)
 RAIO_X_WEIGHT: float = 0.5
+
+# ---------------------------------------------------------------------------
+# Assessor conversacional (D37): LLM que EXPLICA e SIMULA, nunca calcula números.
+# Os valores vêm sempre de src.advisor / src.portfolio, chamados como ferramentas.
+# ---------------------------------------------------------------------------
+LLM_API_KEY_ENV: str = "GEMINI_API_KEY"       # chave do Google AI Studio (nunca versionar)
+LLM_MODEL_ENV: str = "GEMINI_MODEL"           # permite trocar o modelo sem mexer no código
+LLM_DEFAULT_MODEL: str = "gemini-flash-latest"  # alias do Google para o Flash mais recente
+LLM_TEMPERATURE: float = 0.2                  # baixa: respostas estáveis e fiéis aos dados
+LLM_MAX_OUTPUT_TOKENS: int = 800
+LLM_TIMEOUT_SECONDS: int = 30
+ASSISTANT_MAX_TOOL_ROUNDS: int = 3            # rodadas de ferramenta por pergunta (limita custo e laços)
+ASSISTANT_MAX_HISTORY: int = 10               # mensagens anteriores enviadas ao modelo
+ASSISTANT_MAX_QUESTION_CHARS: int = 500
+ASSISTANT_NOTICE: str = (
+    "As perguntas são respondidas pelo Google Gemini. No plano gratuito, o Google pode usar o conteúdo "
+    "para melhorar os produtos dele: não escreva nome, CPF ou outros dados pessoais. Os números vêm "
+    "sempre do assessor, não do modelo de linguagem."
+)
+ASSISTANT_SUGGESTIONS: list[str] = [
+    "Por que a minha carteira ficou assim?",
+    "O que muda se eu completar a reserva de emergência?",
+    "O que é cada classe da carteira, em palavras simples?",
+    "O que brasileiros parecidos comigo costumam fazer?",
+]
 DISCLAIMER: str = (
     "Projeto acadêmico. Esta simulação NÃO é recomendação de investimento e não substitui "
     "a análise de um profissional certificado (CVM/ANBIMA). Modelos treinados com dados de "

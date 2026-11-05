@@ -87,3 +87,34 @@ export interface ReferenciaBR {
   /** Frases prontas (podem ter **negrito**): o que o grupo faz × o que o perfil pede. */
   linhas: string[];
 }
+
+/** Assessor conversacional (D37) */
+export interface InfoConversa {
+  ativo: boolean;
+  aviso: string;
+  sugestoes: string[];
+  max_caracteres: number;
+}
+
+export interface Simulacao {
+  mudancas: Record<string, string>;
+  perfil_antes: string;
+  perfil_depois: string;
+  modo_protecao_antes: boolean;
+  modo_protecao_depois: boolean;
+  alertas_depois: string[];
+  carteira: { classe: string; nome: string; antes: number; depois: number }[];
+  risco_depois: string;
+}
+
+export interface MensagemConversa {
+  papel: "usuario" | "assistente";
+  texto: string;
+  simulacoes?: Simulacao[];
+}
+
+export interface RespostaConversa {
+  resposta: string;
+  simulacoes: Simulacao[];
+  aviso: string;
+}

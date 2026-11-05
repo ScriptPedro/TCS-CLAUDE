@@ -1,15 +1,17 @@
 import type { CSSProperties } from "react";
-import type { Resultado as R } from "../types";
+import type { Respostas, Resultado as R } from "../types";
 import { Markdown, pct, Rico } from "../texto";
+import Conversa from "./Conversa";
 import Notas, { corDa } from "./Notas";
 
 interface Props {
   r: R;
+  respostas: Respostas;
   onAjustar: () => void;
   onRecomecar: () => void;
 }
 
-export default function Resultado({ r, onAjustar, onRecomecar }: Props) {
+export default function Resultado({ r, respostas, onAjustar, onRecomecar }: Props) {
   const dentro = r.carteira.filter((c) => c.pct > 0);
   const fora = r.carteira.filter((c) => c.pct === 0);
 
@@ -146,6 +148,8 @@ export default function Resultado({ r, onAjustar, onRecomecar }: Props) {
           ))}
         </div>
       )}
+
+      <Conversa respostas={respostas} />
 
       <h2>Detalhes</h2>
       <details className="sanfona">
