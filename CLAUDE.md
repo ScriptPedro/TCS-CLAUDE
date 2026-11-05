@@ -12,10 +12,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-**Always use the `.venv` virtual environment (Python 3.11)** — never the global Python; see `skills/ambiente-virtual/SKILL.md` for setup, the activation check and common errors. Python 3.11 (versions pinned in `requirements.txt`; `numba`/`contourpy` are pinned to avoid numpy 2.x, which breaks shap 0.46). Run everything from the repo root, as modules (`python -m src.X`).
+**Always use the `.venv` virtual environment (Python 3.12; 3.11 also works, 3.13 does not)** — never the global Python; see `skills/ambiente-virtual/SKILL.md` for setup, the activation check and common errors. Python 3.12 (versions pinned in `requirements.txt`; numpy 1.26.4 and numba 0.60 ship wheels only up to 3.12, so 3.13 cannot install them — `pyproject.toml` caps `<3.13`; `numba`/`contourpy` are pinned to avoid numpy 2.x, which breaks shap 0.46). Run everything from the repo root, as modules (`python -m src.X`).
 
 ```powershell
-py -3.11 -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.txt
+py -3.12 -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.txt
 python -m src.download_data                 # Kaggle API; needs ~/.kaggle/kaggle.json + accepted competition rules
 python -m src.pipeline                      # full pipeline: prepare → segmentation → recommender → raio_x → personas → bias audit
 python -m src.pipeline --out ensaio --sample-size 5000   # isolated dry run, does not touch data/ models/ reports/

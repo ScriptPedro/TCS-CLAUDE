@@ -184,6 +184,11 @@ Este documento é a "cola" para defender o projeto na banca.
 
 - `numba` e `contourpy` recentes forçam numpy 2.x, o que quebra o shap 0.46 (erro no import). Ambos
   foram fixados no `requirements.txt` (`numba==0.60.0`, `contourpy==1.3.0`).
+- **Consequência para a versão do Python:** `numpy==1.26.4` e `numba==0.60.0` só publicam pacotes
+  prontos até o Python 3.12. O projeto padroniza no **3.12** (o 3.11 continua funcionando; a suíte
+  inteira passa nos dois) e o `pyproject.toml` limita `requires-python` a `<3.13`, porque no 3.13 o
+  `pip` tentaria compilar numpy e numba e falharia, principalmente no Windows. Subir para o 3.13 exige
+  antes trocar o shap 0.46 por uma versão compatível com numpy 2.x.
 
 ## D22 — Separação física entre regras e ML
 

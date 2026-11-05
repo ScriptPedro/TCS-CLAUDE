@@ -72,14 +72,14 @@ assessor-investimentos/
 
 ## Instalação (Windows / PowerShell)
 
-> Use **sempre** o ambiente virtual `.venv` com Python 3.11, nunca o Python global. Passo a passo,
+> Use **sempre** o ambiente virtual `.venv` com Python 3.12 (3.11 também funciona; 3.13 não), nunca o Python global. Passo a passo,
 > verificação e erros comuns: [`skills/ambiente-virtual/SKILL.md`](skills/ambiente-virtual/SKILL.md).
 
 Crie o projeto num **caminho curto** (ex.: `C:\projetos\assessor`): o Windows limita caminhos a
 260 caracteres, e o venv pode falhar em pastas muito profundas.
 
 ```powershell
-py -3.11 -m venv .venv
+py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```

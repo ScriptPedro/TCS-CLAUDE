@@ -2,7 +2,7 @@
 name = "assessor-investimentos"
 version = "1.0.0"
 description = "Assessor de Investimentos Virtual — projeto acadêmico de IA Aplicada (BFSI)"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"  # 3.12 recomendado; 3.13 não instala numpy 1.26 / numba 0.60 (D21)
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

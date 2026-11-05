@@ -1,4 +1,5 @@
-# Python 3.11 — versões fixadas para reprodutibilidade
+# Python 3.12 (3.11 também funciona; 3.13 NÃO: numpy 1.26.4 e numba 0.60 só têm pacotes até 3.12, D21)
+# Versões fixadas para reprodutibilidade
 # Dados
 pandas==2.2.3
 numpy==1.26.4

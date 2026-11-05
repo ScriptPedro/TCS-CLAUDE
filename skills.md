@@ -61,7 +61,7 @@ O usuário responde a um questionário de 14 perguntas em 4 etapas e recebe:
 
 | Camada | Tecnologia | Observação |
 |---|---|---|
-| Linguagem | **Python 3.11** (`requires-python >= 3.11`) | Versões fixadas em `requirements.txt` |
+| Linguagem | **Python 3.12** (`requires-python >=3.11,<3.13`; 3.13 não instala numpy 1.26 / numba 0.60) | Versões fixadas em `requirements.txt` |
 | Dados | pandas 2.2.3, numpy 1.26.4, pyarrow 17 | Parquet como formato intermediário |
 | ML | scikit-learn 1.5.2, LightGBM 4.5.0, SHAP 0.46.0 | `numba==0.60.0` e `contourpy==1.3.0` fixados (D21) |
 | Visualização | matplotlib, seaborn, plotly | Paleta validada para daltonismo no `config.py` |
@@ -84,14 +84,14 @@ Todos os comandos rodam **na raiz do projeto**.
 
 ```powershell
 # Windows / PowerShell (use um caminho curto, ex.: C:\projetos\assessor — limite de 260 caracteres)
-py -3.11 -m venv .venv
+py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
 ```bash
 # Linux / macOS
-python3.11 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
