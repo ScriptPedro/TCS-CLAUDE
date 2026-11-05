@@ -17,11 +17,11 @@ from tests.test_recommender import _signal_data
 
 MODERADO = {
     **ui.respostas_padrao(),
-    "idade": 40, "dependentes": "1_a_2", "renda_faixa": "4000_7000", "cartao_faixa": "10_30",
+    "idade": 40, "dependentes": "1_a_2", "renda_faixa": "4500_10000", "cartao_faixa": "10_30",
     "divida_cara": "nao", "reserva_faixa": "6_12", "conta_faixa": "mais_10", "objetivo": "aposentadoria",
     "prazo": "3_a_5_anos", "tolerancia": "manteria", "produtos": ["conta", "poupanca", "deposito"],
 }
-ENDIVIDADO = {**MODERADO, "idade": 23, "renda_faixa": "1500_2500", "cartao_faixa": "30_50",
+ENDIVIDADO = {**MODERADO, "idade": 23, "renda_faixa": "1800_2500", "cartao_faixa": "30_50",
               "divida_cara": "sim", "reserva_faixa": "nao_tenho", "produtos": ["conta", "cartao"]}
 
 
@@ -54,7 +54,7 @@ def test_questionario_tem_todas_as_perguntas(client: TestClient) -> None:
     assert sorted(campos) == sorted(ui.PERGUNTAS)
     assert r["padrao"] == ui.respostas_padrao()
     renda = next(p for e in r["etapas"] for p in e["perguntas"] if p["campo"] == "renda_faixa")
-    assert {"valor": "4000_7000", "rotulo": "R$ 4.000 a R$ 7.000"} in renda["opcoes"]
+    assert {"valor": "4500_10000", "rotulo": "R$ 4.500 a R$ 10.000"} in renda["opcoes"]
 
 
 def test_saude_com_e_sem_modelos(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

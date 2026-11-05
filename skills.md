@@ -6,7 +6,7 @@ description: Guia técnico do Assessor de Investimentos Virtual (projeto final d
 # Skills — Assessor de Investimentos Virtual
 
 > Documento de referência técnica, escrito para quem vai **rodar, manter, evoluir ou defender** o projeto.
-> Ele resume o que está espalhado em `README.md`, `docs/decisoes.md` (D1–D35), `docs/limitacoes.md`,
+> Ele resume o que está espalhado em `README.md`, `docs/decisoes.md` (D1–D37), `docs/limitacoes.md`,
 > `reports/*.md` e no código. Quando houver divergência, **o código e o `src/config.py` são a fonte da verdade**.
 
 > ⚠️ Projeto acadêmico. **Não é recomendação de investimento.** Os modelos foram treinados com dados de
@@ -496,10 +496,10 @@ dataset (D16, D27, D34):
 | Feature do modelo | Origem no app |
 |---|---|
 | `age` | Idade digitada (18–100) |
-| `renta` | Faixa de renda BRL → valor representativo → **quintil brasileiro** (limites R$ 1.500 / 2.500 / 4.000 / 7.000) → média geométrica dos limites do mesmo quintil na base espanhola |
+| `renta` | Faixa de renda BRL → valor representativo → **quintil brasileiro** (limites oficiais da PNAD Contínua 2025: R$ 1.504 / 1.829 / 2.546 / 4.470) → média geométrica dos limites do mesmo quintil na base espanhola |
 | `antiguedad` | Faixa "tempo de conta em banco" × 12 meses (limitado a idade − 16 anos) |
 | `ind_actividad_cliente` | Fixo em 1 (quem usa o app é ativo) |
-| `segmento` | Regra: idade ≤ 24 → universitário; 5º quintil → top; senão particulares |
+| `segmento` | Regra: idade ≤ 24 → universitário; renda acima do P95 (R$ 10.174) → top; senão particulares (D37) |
 | 24 produtos | Pergunta "Quais destes produtos você já tem?": cada item ativa o 1º produto do grupo |
 
 ### Questionário (4 etapas, 14 perguntas)
@@ -513,7 +513,7 @@ dataset (D16, D27, D34):
 
 **Regras do formulário:**
 - Valores são escolhidos por **faixas**, e cada faixa vira um valor representativo
-  (ex.: "R$ 4.000 a R$ 7.000" → R$ 5.500).
+  (ex.: "R$ 4.500 a R$ 10.000" → R$ 7.000).
 - **As bordas das faixas coincidem com os limites das regras** (30% no cartão; 6 e 12 meses de reserva):
   a faixa escolhida decide a regra sem ambiguidade. Há teste para isso.
 - **Minimização (LGPD):** nenhuma pergunta é só informativa; cada uma muda uma regra ou uma feature.
@@ -569,7 +569,7 @@ classes com 0% omitidas. Layout verificado em 375 px e 640 px.
 
 ## 11. Qualidade: testes, personas e auditoria de viés
 
-### 11.1 Testes automatizados (`tests/`, 90 funções de teste)
+### 11.1 Testes automatizados (`tests/`, 93 funções de teste, 248 casos com a parametrização)
 
 | Arquivo | Cobre |
 |---|---|
@@ -639,7 +639,7 @@ classes com 0% omitidas. Layout verificado em 375 px e 640 px.
 | Sem preço, risco ou retorno de ativos | Faixas fixas, sem otimização média-variância | Faixas documentadas e testadas |
 | ~25% de renda imputada | Ruído na variável mais importante | Mediana por segmento × idade + flag |
 | *Train-serve skew* | Usuário do app ≠ cliente do treino (atividade fixa, segmento por regra, renda por quintil) | Documentado (D16, D27) |
-| Limites de renda BR aproximados | Quintil pode estar deslocado | **Substituir pelos quintis da PNAD Contínua (IBGE)** |
+| Referência de renda é do trabalho e bruta (PNAD) | Aposentados e rendas de outras fontes ficam fora da distribuição | Pergunta do app pede renda bruta; documentado (D27) |
 | Suitability inspirada, não homologada | Não serve para uso real | Aviso legal |
 | Não considera IR, taxas, Selic/IPCA atuais | Carteira simplificada | Declarado |
 | Relatórios com caminhos absolutos de Windows nas imagens | Figuras quebradas ao abrir `reports/*.md` fora daquela máquina | Regenerar os relatórios ou usar caminhos relativos (`../docs/figures/…`) |
@@ -667,7 +667,7 @@ classes com 0% omitidas. Layout verificado em 375 px e 640 px.
 | Adicionar pergunta | `config.py` → `Questionario` → `components.PERGUNTAS`/`ETAPAS` → regra em `portfolio.py` | Precisa mudar uma regra (minimização); bordas das faixas = limites das regras |
 | Trocar o modelo de recomendação | `src/recommender.py` (manter `predict_proba`, `recommend`, `explain`) | `portfolio.py` não muda (D22); comparar com os baselines |
 | Renomear clusters | `config.CLUSTER_NAME_OVERRIDES` | Após ver o perfil real |
-| Atualizar quintis de renda | `config.BR_MONTHLY_INCOME_EDGES` e `INCOME_BANDS` | Usar PNAD Contínua |
+| Atualizar quintis de renda | `config.BR_MONTHLY_INCOME_EDGES`, `BR_TOP_SEGMENT_MIN_INCOME` e `INCOME_BANDS` | SIDRA Tabela 7540 do ano mais recente; o teste de alinhamento das faixas precisa passar |
 | Novo campo na tela | `api.serializar()` → `frontend/src/types.ts` → componente | Lógica fica no back-end |
 
 **Checklist antes de entregar uma mudança:** `pytest` verde → `python -m src.pipeline --out ensaio --sample-size 5000`
@@ -693,7 +693,7 @@ sem falhas de persona → decisão registrada em `docs/decisoes.md` se for escol
 
 ## 17. Próximos passos
 
-1. Substituir os limites de renda pelos quintis oficiais da **PNAD Contínua (IBGE)**.
+1. Atualizar os limites de renda a cada nova divulgação da **PNAD Contínua** (SIDRA, Tabela 7540).
 2. Dados brasileiros (**Open Finance**, com consentimento) para eliminar a analogia Espanha → Brasil.
 3. **Modelo temporal** ("próximo produto" entre meses) usando os 17 meses do arquivo original.
 4. **Otimização de carteira** com retornos e riscos históricos (CDI, IMA-B, Ibovespa).
@@ -728,11 +728,11 @@ sem falhas de persona → decisão registrada em `docs/decisoes.md` se for escol
 ├── tests/                   # pytest + dados sintéticos
 ├── notebooks/01_eda.ipynb
 ├── docs/
-│   ├── decisoes.md          # D1–D35
+│   ├── decisoes.md          # D1–D37
 │   ├── limitacoes.md
 │   ├── roteiro_apresentacao.md
 │   └── figures/             # 11–18 versionadas
 ├── reports/                 # qualidade, segmentação, recomendação, personas, viés
-├── data/                    # não versionado
+├── data/                    # raw/ e processed/ não versionados; external/ = tabelas do IBGE
 └── models/                  # não versionado (*.joblib, prep_stats.json)
 ```

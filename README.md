@@ -43,7 +43,7 @@ assessor-investimentos/
 ├── data/raw/              # train_ver2.csv e microdados do Raio X (não versionados)
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
 ├── docs/
-│   ├── decisoes.md        # D1–D36: cada decisão técnica e as alternativas descartadas
+│   ├── decisoes.md        # D1–D37: cada decisão técnica e as alternativas descartadas
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
@@ -168,6 +168,6 @@ sintéticos com 10 mil clientes, o pipeline completo levou ~21 s.
 
 ## Documentação
 
-- [Decisões técnicas (D1–D30)](docs/decisoes.md)
+- [Decisões técnicas (D1–D37)](docs/decisoes.md)
 - [Limitações, vieses, ética e próximos passos](docs/limitacoes.md)
 - [Roteiro de apresentação e perguntas da banca](docs/roteiro_apresentacao.md)
