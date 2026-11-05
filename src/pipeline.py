@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src import advisor, bias_audit, config, personas, prepare_data, raio_x, recommender, segmentation
-from src.utils import get_logger
+from src.utils import get_logger, usar_backend_sem_janela
 
 logger = get_logger(__name__)
 
@@ -105,6 +105,7 @@ def run(
 
 
 def main() -> None:
+    usar_backend_sem_janela()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--input", type=Path, default=config.RAW_FILE)
     parser.add_argument("--out", type=Path, default=None, help="pasta isolada para todas as saídas")

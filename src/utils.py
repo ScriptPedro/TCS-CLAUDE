@@ -1,4 +1,4 @@
-"""Utilitários compartilhados (logging)."""
+"""Utilitários compartilhados (logging, formatação, backend de gráficos)."""
 
 from __future__ import annotations
 
@@ -49,3 +49,17 @@ def caminho_relativo(alvo: Path, pasta_do_relatorio: Path) -> str:
         return Path(os.path.relpath(Path(alvo).resolve(), Path(pasta_do_relatorio).resolve())).as_posix()
     except ValueError:
         return Path(alvo).as_posix()
+
+
+def usar_backend_sem_janela() -> None:
+    """Usa o backend "Agg" do matplotlib: os gráficos são só salvos em arquivo.
+
+    Sem isso, no Windows o matplotlib escolhe o TkAgg, que depende do Tcl/Tk. Em
+    instalações com Tcl/Tk ausente ou quebrado, isso gera "Can't find a usable
+    init.tcl" ou derruba o Python (0x80000003) quando uma figura é coletada pelo
+    garbage collector em outra thread. Quem definir MPLBACKEND mantém a escolha.
+    """
+    if "MPLBACKEND" not in os.environ:
+        import matplotlib
+
+        matplotlib.use("Agg")
