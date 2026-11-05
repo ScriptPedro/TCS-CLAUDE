@@ -286,7 +286,7 @@ def _mostrar_mensagem(m: dict) -> None:
 
 
 def secao_conversa() -> None:
-    """Assessor conversacional (D37): o Gemini explica e simula; os números vêm do assessor."""
+    """Assessor conversacional (D38): o Gemini explica e simula; os números vêm do assessor."""
     st.subheader("Pergunte ao assessor")
     provedor = assistente.obter_provedor()
     if provedor is None:

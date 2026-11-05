@@ -6,7 +6,7 @@ Expõe o mesmo fluxo do app Streamlit, sem duplicar lógica: as perguntas vêm d
     GET  /api/saude          → os modelos estão carregados?
     GET  /api/questionario   → etapas, perguntas, opções e respostas padrão
     POST /api/recomendacao   → respostas do formulário → recomendação completa
-    POST /api/conversa       → pergunta sobre a carteira → resposta do assistente (D37)
+    POST /api/conversa       → pergunta sobre a carteira → resposta do assistente (D38)
 
 Uso (na raiz do projeto):
     uvicorn api.main:app --reload --port 8000
@@ -189,7 +189,7 @@ def recomendacao(body: Respostas) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Assessor conversacional (D37)
+# Assessor conversacional (D38)
 # ---------------------------------------------------------------------------
 class Conversa(BaseModel):
     respostas: dict[str, Any]

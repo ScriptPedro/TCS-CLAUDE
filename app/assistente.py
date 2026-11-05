@@ -1,4 +1,4 @@
-"""Assessor conversacional (D37): o usuário pergunta sobre a própria carteira.
+"""Assessor conversacional (D38): o usuário pergunta sobre a própria carteira.
 
 O modelo de linguagem só EXPLICA e SIMULA. Todo número vem do código já testado:
     - o contexto (perfil, faixas, carteira, produtos, referência brasileira) sai de
@@ -6,8 +6,8 @@ O modelo de linguagem só EXPLICA e SIMULA. Todo número vem do código já test
     - a ferramenta ``simular_cenario`` muda respostas do questionário e roda o
       assessor de novo ("e se eu quitar o cartão?").
 
-Privacidade (LGPD, D37): o modelo recebe faixas e rótulos (ex.: renda "R$ 4.000 a
-R$ 7.000", "35 a 44 anos"), nunca a idade exata nem valores digitados.
+Privacidade (LGPD, D38): o modelo recebe faixas e rótulos (ex.: renda "R$ 4.500 a
+R$ 10.000", "35 a 44 anos"), nunca a idade exata nem valores digitados.
 
 Usado pela API (``POST /api/conversa``) e pelo app Streamlit. Testável sem rede:
 os testes passam um provedor falso no lugar do Gemini.

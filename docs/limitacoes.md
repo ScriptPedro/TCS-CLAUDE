@@ -18,7 +18,7 @@
 
 ## 2. Limitações dos modelos
 
-- **Assessor conversacional (D37):** o modelo de linguagem pode errar ao reescrever um número ou
+- **Assessor conversacional (D38):** o modelo de linguagem pode errar ao reescrever um número ou
   extrapolar. Mitigação: instruções rígidas, temperatura baixa, números vindos só do contexto e da
   ferramenta, e a tabela de simulação exibida ao lado do texto, direto da API. Não há verificação
   automática de cada número citado no texto.
@@ -28,8 +28,8 @@
   "você **deve** ter".
 - **Ponte questionário → features (D16, D27):** o usuário do app não é cliente Santander. A antiguidade
   vem do "tempo de conta em banco", o segmento vem de uma regra, a atividade é fixa em 1 e a renda é
-  convertida por quintil com **limites brasileiros aproximados**. Existe diferença entre os dados de
-  treino e os do app (*train-serve skew*).
+  convertida por quintil com os limites da PNAD Contínua 2025 (renda **do trabalho**, bruta). Existe
+  diferença entre os dados de treino e os do app (*train-serve skew*).
 - **O LightGBM pode não superar o baseline:** nos dados sintéticos, ele só venceu quando havia sinal
   individual além do segmento (D20). Se o baseline vencer nos dados reais, isso é um resultado válido e
   deve ser apresentado como tal.
@@ -71,7 +71,7 @@
 - **Raio X (ANBIMA):** os microdados são anônimos, mas contêm dados **sensíveis** (cor, religião,
   orientação sexual). `src/raio_x.py` lê apenas idade, renda, peso amostral e produtos; as demais colunas
   nunca entram na memória. O arquivo fica em `data/raw/` (não versionado); só a tabela agregada é usada.
-- **Assessor conversacional (Gemini, D37):** as perguntas do chat e um resumo da recomendação vão para o
+- **Assessor conversacional (Gemini, D38):** as perguntas do chat e um resumo da recomendação vão para o
   Google. No **plano gratuito**, o Google pode usar esse conteúdo para melhorar os produtos dele e pessoas
   podem revisá-lo. Por isso só saem faixas (nunca idade exata ou valores digitados), a tela avisa para não
   escrever dados pessoais, e o chat é opcional (desligado sem `GEMINI_API_KEY`). Em produção, seria
@@ -84,13 +84,13 @@
 ## 6. Próximos passos
 
 1. **Rodar com os dados reais** e revisar os nomes dos clusters, as figuras e os números dos slides.
-2. **Substituir os limites de renda** pelos quintis oficiais da PNAD Contínua (IBGE).
+2. **Atualizar os limites de renda** a cada nova divulgação da PNAD Contínua (SIDRA, Tabela 7540).
 3. **Dados brasileiros de posse registrada** (ex.: Open Finance, com consentimento) para treinar o modelo
    sem a analogia Espanha → Brasil. O Raio X (D36) já traz a referência brasileira, mas é pesquisa
    declarada e pequena demais para treinar.
 4. **Modelo temporal** ("próximo produto" entre meses), usando os 17 meses do arquivo original.
 5. **Otimização de carteira** com retornos e riscos históricos de índices brasileiros (CDI, IMA-B, Ibovespa).
 6. **Calibração explícita** das probabilidades (isotônica/Platt) e ajuste de hiperparâmetros (Optuna).
-7. ~~Texto por LLM~~: feito como assessor conversacional (D37). Próximo passo: avaliar as respostas do
+7. ~~Texto por LLM~~: feito como assessor conversacional (D38). Próximo passo: avaliar as respostas do
    modelo com um conjunto fixo de perguntas (números citados × números do assessor).
 8. **Monitoramento** em produção: drift das features, taxa de modo proteção e auditoria de viés periódica.

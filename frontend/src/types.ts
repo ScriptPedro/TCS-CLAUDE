@@ -88,7 +88,7 @@ export interface ReferenciaBR {
   linhas: string[];
 }
 
-/** Assessor conversacional (D37) */
+/** Assessor conversacional (D38) */
 export interface InfoConversa {
   ativo: boolean;
   aviso: string;

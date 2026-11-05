@@ -350,13 +350,16 @@ LIQUIDITY_NEED_BOOST: dict[str, int] = {"nao": 0, "talvez": 10, "sim": 20}
 # Faixas do questionário (D34): o usuário escolhe uma faixa; o motor usa um valor
 # representativo dela. Formato: chave → (rótulo, valor representativo).
 # ---------------------------------------------------------------------------
-INCOME_BANDS: dict[str, tuple[str, float]] = {     # renda mensal líquida, R$
-    "ate_1500": ("Até R$ 1.500", 1_000.0),
-    "1500_2500": ("R$ 1.500 a R$ 2.500", 2_000.0),
-    "2500_4000": ("R$ 2.500 a R$ 4.000", 3_250.0),
-    "4000_7000": ("R$ 4.000 a R$ 7.000", 5_500.0),
-    "7000_12000": ("R$ 7.000 a R$ 12.000", 9_500.0),
-    "acima_12000": ("Acima de R$ 12.000", 15_000.0),
+INCOME_BANDS: dict[str, tuple[str, float]] = {     # renda mensal, R$
+    # As bordas são os limites da PNAD Contínua arredondados (BR_MONTHLY_INCOME_EDGES e
+    # BR_TOP_SEGMENT_MIN_INCOME): cada faixa cai inteira em um quintil e em um segmento (D37).
+    "ate_1500": ("Até R$ 1.500", 1_200.0),                     # 1º quintil (até P20)
+    "1500_1800": ("R$ 1.500 a R$ 1.800", 1_650.0),             # 2º quintil (P20–P40)
+    "1800_2500": ("R$ 1.800 a R$ 2.500", 2_150.0),             # 3º quintil (P40–P60)
+    "2500_4500": ("R$ 2.500 a R$ 4.500", 3_500.0),             # 4º quintil (P60–P80)
+    "4500_10000": ("R$ 4.500 a R$ 10.000", 7_000.0),           # 5º quintil, abaixo do P95
+    "10000_25000": ("R$ 10.000 a R$ 25.000", 15_000.0),        # acima do P95 → segmento top
+    "acima_25000": ("Acima de R$ 25.000", 30_000.0),           # acima do P99
 }
 CARD_SPEND_BANDS: dict[str, tuple[str, float]] = { # fração da renda gasta no cartão
     "nao_uso": ("Não uso cartão", 0.0),
@@ -423,10 +426,15 @@ PROFILE_DESCRIPTIONS: dict[str, str] = {
     "arrojado": "aceita oscilações fortes no caminho em troca de mais potencial de crescimento no longo prazo.",
 }
 
-# Ponte de renda (D3/D16): renda mensal BRL → quintil brasileiro → renda espanhola do mesmo quintil.
-# ATENÇÃO: limites APROXIMADOS de renda individual mensal; substituir pelos quintis oficiais da
-# PNAD Contínua (IBGE) antes da apresentação.
-BR_MONTHLY_INCOME_EDGES: list[float] = [1_500.0, 2_500.0, 4_000.0, 7_000.0]
+# Ponte de renda (D3/D16/D27): renda mensal BRL → quintil brasileiro → renda espanhola do mesmo quintil.
+# Fonte: IBGE, PNAD Contínua 2025, SIDRA Tabela 7540 — limites superiores das classes de percentual
+# das pessoas em ordem crescente de rendimento habitualmente recebido (R$/mês, preços médios de 2025),
+# Brasil. Pessoas de 14 anos ou mais com rendimento de trabalho. Cópia em data/external/.
+# Para atualizar: baixe a tabela 7540 do ano mais recente e troque os valores abaixo.
+BR_INCOME_SOURCE: str = "IBGE, PNAD Contínua 2025, SIDRA Tabela 7540 (rendimento habitualmente recebido)"
+BR_MONTHLY_INCOME_EDGES: list[float] = [1_504.0, 1_829.0, 2_546.0, 4_470.0]  # P20, P40, P60, P80
+# Segmento "top" só acima do P95: na base de treino o top é ~4% dos clientes (D37)
+BR_TOP_SEGMENT_MIN_INCOME: float = 10_174.0  # P95
 # Segmento derivado por regra (o app não sabe o segmento bancário do usuário)
 UNIVERSITY_AGE_MAX: int = 24
 DEFAULT_ACTIVITY: int = 1            # quem usa o app é tratado como cliente ativo
@@ -478,7 +486,7 @@ RAIO_X_MIN_CELL: int = 30             # abaixo disso o texto avisa que o número
 RAIO_X_WEIGHT: float = 0.5
 
 # ---------------------------------------------------------------------------
-# Assessor conversacional (D37): LLM que EXPLICA e SIMULA, nunca calcula números.
+# Assessor conversacional (D38): LLM que EXPLICA e SIMULA, nunca calcula números.
 # Os valores vêm sempre de src.advisor / src.portfolio, chamados como ferramentas.
 # ---------------------------------------------------------------------------
 LLM_API_KEY_ENV: str = "GEMINI_API_KEY"       # chave do Google AI Studio (nunca versionar)

@@ -66,8 +66,12 @@ def carregar_artefatos(
 # Ponte questionário → features
 # ---------------------------------------------------------------------------
 def quintil_renda_br(renda_mensal: float) -> int:
-    """Quintil (0 = mais baixo … 4 = mais alto) da renda mensal brasileira."""
-    return int(np.searchsorted(config.BR_MONTHLY_INCOME_EDGES, renda_mensal, side="right"))
+    """Quintil (0 = mais baixo … 4 = mais alto) da renda mensal brasileira.
+
+    Os limites da PNAD Contínua são LIMITES SUPERIORES (inclusivos): quem ganha
+    exatamente o P20 ainda está no 1º quintil, por isso ``side="left"``.
+    """
+    return int(np.searchsorted(config.BR_MONTHLY_INCOME_EDGES, renda_mensal, side="left"))
 
 
 def renda_equivalente_eur(renda_mensal: float, prep_stats: dict[str, Any]) -> float:
@@ -82,24 +86,27 @@ def renda_equivalente_eur(renda_mensal: float, prep_stats: dict[str, Any]) -> fl
     return math.sqrt(edges[q] * edges[q + 1])
 
 
-def derivar_segmento(idade: int, quintil: int) -> str:
-    """Segmento bancário por regra: universitário (jovem), top (maior quintil) ou particulares."""
+def derivar_segmento(idade: int, renda_mensal: float) -> str:
+    """Segmento bancário por regra: universitário (jovem), top (alta renda) ou particulares.
+
+    "top" exige renda acima do P95 brasileiro, e não só o quintil mais alto: na base
+    de treino o segmento top é ~4% dos clientes, enquanto o quintil mais alto é 20% (D37).
+    """
     if idade <= config.UNIVERSITY_AGE_MAX:
         return config.SEGMENT_MAP["03 - UNIVERSITARIO"]
-    if quintil == config.N_INCOME_QUANTILES - 1:
+    if renda_mensal > config.BR_TOP_SEGMENT_MIN_INCOME:
         return config.SEGMENT_MAP["01 - TOP"]
     return config.SEGMENT_MAP["02 - PARTICULARES"]
 
 
 def questionario_para_linha(q: Questionario, prep_stats: dict[str, Any]) -> pd.DataFrame:
     """Uma linha no formato do dataset limpo, pronta para os dois modelos."""
-    quintil = quintil_renda_br(q.renda_mensal)
     return pd.DataFrame([{
         "age": q.idade,
         "renta": renda_equivalente_eur(q.renda_mensal, prep_stats),
         "antiguedad": round(q.anos_conta * 12),
         "ind_actividad_cliente": config.DEFAULT_ACTIVITY,
-        "segmento": derivar_segmento(q.idade, quintil),
+        "segmento": derivar_segmento(q.idade, q.renda_mensal),
         **items_to_product_row(set(q.produtos)),
     }])
 

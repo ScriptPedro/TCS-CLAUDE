@@ -40,11 +40,11 @@ assessor-investimentos/
 ├── app/
 │   ├── main.py            # Etapa 7 — Streamlit (layout e navegação)
 │   ├── components.py      # validação do formulário, gráfico (testáveis sem Streamlit)
-│   └── assistente.py      # chat: contexto, ferramenta simular_cenario e laço da conversa (D37)
+│   └── assistente.py      # chat: contexto, ferramenta simular_cenario e laço da conversa (D38)
 ├── data/raw/              # train_ver2.csv e microdados do Raio X (não versionados)
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
 ├── docs/
-│   ├── decisoes.md        # D1–D37: cada decisão técnica e as alternativas descartadas
+│   ├── decisoes.md        # D1–D38: cada decisão técnica e as alternativas descartadas
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
@@ -60,7 +60,7 @@ assessor-investimentos/
 │   ├── segmentation.py    # Etapa 4 — K-Means × GMM
 │   ├── recommender.py     # Etapa 5 — LightGBM, baselines, métricas, SHAP
 │   ├── raio_x.py          # referência brasileira: posse por renda × idade (Raio X ANBIMA, D36)
-│   ├── llm.py             # acesso ao Gemini (único arquivo que conhece o fornecedor, D37)
+│   ├── llm.py             # acesso ao Gemini (único arquivo que conhece o fornecedor, D38)
 │   ├── portfolio.py       # Etapa 6 — suitability e carteira (SEM ML)
 │   ├── advisor.py         # orquestra questionário → modelos → regras
 │   ├── personas.py        # Etapa 8 — personas com saídas esperadas
@@ -110,7 +110,7 @@ Sem esse arquivo o app funciona normalmente, só com o modelo.
 ## Assessor conversacional (Gemini, opcional)
 
 Na tela de resultado há um chat para perguntar sobre a carteira ("por que tenho só 11% em ações?", "e se
-eu quitar o cartão?"). O modelo explica e simula, mas os números vêm sempre do assessor (D37).
+eu quitar o cartão?"). O modelo explica e simula, mas os números vêm sempre do assessor (D38).
 
 1. Crie uma chave gratuita no [Google AI Studio](https://aistudio.google.com).
 2. Antes de subir a API ou o Streamlit, no mesmo terminal:
@@ -186,6 +186,6 @@ sintéticos com 10 mil clientes, o pipeline completo levou ~21 s.
 
 ## Documentação
 
-- [Decisões técnicas (D1–D30)](docs/decisoes.md)
+- [Decisões técnicas (D1–D38)](docs/decisoes.md)
 - [Limitações, vieses, ética e próximos passos](docs/limitacoes.md)
 - [Roteiro de apresentação e perguntas da banca](docs/roteiro_apresentacao.md)

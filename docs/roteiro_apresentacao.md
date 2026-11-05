@@ -34,7 +34,7 @@ Mensagem central, para repetir no início e no fim:
 
 - [ ] Pipeline rodado com os dados **reais** (`python -m src.pipeline`) e figuras atualizadas nos slides
 - [ ] Nomes dos clusters revisados (`CLUSTER_NAME_OVERRIDES` no `config.py`)
-- [ ] Quintis de renda da PNAD/IBGE no `config.py` (D27)
+- [x] Quintis de renda da PNAD/IBGE no `config.py` (D27, D37)
 - [ ] `pytest` passando
 - [ ] App testado no notebook da apresentação, **sem internet**
 - [ ] Vídeo de 90 s da demo gravado (plano B)
@@ -58,7 +58,7 @@ Mensagem central, para repetir no início e no fim:
 | Por que early stopping pela log loss? | A AUC estabilizava cedo e deixava as probabilidades descalibradas, o que atrapalha comparar itens diferentes | D19 |
 | O sistema discrimina por sexo? | `sexo` não entra em nenhum modelo, e o app não o pergunta. Mesmo assim auditamos proxies com a regra dos 4/5 | D11, `auditoria_vies.md` |
 | E a LGPD? | Minimização (sem PII), sem armazenamento, explicação de cada decisão (art. 20) e aviso legal | limitações §5 |
-| Por que template e não ChatGPT/LLM no texto? | O texto principal continua por template (determinístico e auditável). O LLM entra só no chat, para explicar e simular "e se", e os números vêm sempre do assessor | D26, D37 |
-| O chat com IA não pode inventar números? | Ele recebe só os números calculados e usa uma ferramenta que roda o assessor de novo; a tabela da simulação vem direto da API, não do texto do modelo | D37 |
-| E a privacidade do chat no Gemini gratuito? | Só saem faixas (nunca idade exata), a tela avisa para não escrever dados pessoais e o chat é opcional; em produção, plano pago + consentimento | D37, limitações §5 |
+| Por que template e não ChatGPT/LLM no texto? | O texto principal continua por template (determinístico e auditável). O LLM entra só no chat, para explicar e simular "e se", e os números vêm sempre do assessor | D26, D38 |
+| O chat com IA não pode inventar números? | Ele recebe só os números calculados e usa uma ferramenta que roda o assessor de novo; a tabela da simulação vem direto da API, não do texto do modelo | D38 |
+| E a privacidade do chat no Gemini gratuito? | Só saem faixas (nunca idade exata), a tela avisa para não escrever dados pessoais e o chat é opcional; em produção, plano pago + consentimento | D38, limitações §5 |
 | O que fariam com mais tempo? | Dados brasileiros, modelo temporal com os 17 meses, otimização média-variância, calibração | limitações §6 |

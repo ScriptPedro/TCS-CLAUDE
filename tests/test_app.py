@@ -19,13 +19,13 @@ APP = str(Path(__file__).resolve().parents[1] / "app" / "main.py")
 # Respostas no formato do formulário (faixas)
 MODERADO = {
     **ui.respostas_padrao(),
-    "idade": 40, "dependentes": "1_a_2", "estabilidade_renda": "estavel", "renda_faixa": "4000_7000",
+    "idade": 40, "dependentes": "1_a_2", "estabilidade_renda": "estavel", "renda_faixa": "4500_10000",
     "cartao_faixa": "10_30", "divida_cara": "nao", "reserva_faixa": "6_12", "conta_faixa": "mais_10",
     "objetivo": "aposentadoria", "prazo": "3_a_5_anos", "necessidade_liquidez": "nao",
     "tolerancia": "manteria", "conhecimento": "basico", "produtos": ["conta", "poupanca", "deposito"],
 }
 ENDIVIDADO = {
-    **MODERADO, "idade": 23, "dependentes": "nenhum", "renda_faixa": "1500_2500", "cartao_faixa": "30_50",
+    **MODERADO, "idade": 23, "dependentes": "nenhum", "renda_faixa": "1800_2500", "cartao_faixa": "30_50",
     "divida_cara": "sim", "reserva_faixa": "nao_tenho", "conta_faixa": "1_5", "objetivo": "comprar_bem",
     "prazo": "1_a_3_anos", "tolerancia": "venderia_parte", "conhecimento": "nenhum", "produtos": ["conta", "cartao"],
 }
@@ -50,9 +50,9 @@ def test_padroes_sao_opcoes_validas() -> None:
 def test_faixas_viram_valores_representativos() -> None:
     q, erros = ui.montar_questionario(MODERADO)
     assert erros == []
-    assert q.renda_mensal == 5_500
-    assert q.gasto_cartao_mensal == pytest.approx(0.20 * 5_500)
-    assert q.reserva_emergencia == pytest.approx(9.0 * 5_500)
+    assert q.renda_mensal == 7_000
+    assert q.gasto_cartao_mensal == pytest.approx(0.20 * 7_000)
+    assert q.reserva_emergencia == pytest.approx(9.0 * 7_000)
     assert q.produtos == frozenset({"conta", "poupanca", "deposito"})
 
 
@@ -61,6 +61,41 @@ def test_borda_da_faixa_decide_a_regra_do_cartao(faixa: str, cartao_alto: bool) 
     from src.portfolio import avaliar_saude
     q, _ = ui.montar_questionario({**MODERADO, "cartao_faixa": faixa})
     assert avaliar_saude(q).cartao_alto is cartao_alto
+
+
+def _limites_da_faixa(chave: str) -> tuple[float, float]:
+    """'ate_1500' → (0, 1500); '1500_1800' → (1500, 1800); 'acima_25000' → (25000, ∞)."""
+    partes = chave.split("_")
+    if partes[0] == "ate":
+        return 0.0, float(partes[1])
+    if partes[0] == "acima":
+        return float(partes[1]), float("inf")
+    return float(partes[0]), float(partes[1])
+
+
+def test_faixas_de_renda_alinhadas_aos_limites_da_pnad() -> None:
+    """Cada faixa cai inteira em UM quintil e em UM segmento (D37).
+
+    As bordas das faixas são os limites oficiais arredondados, então toleramos 2%
+    perto de cada borda (ex.: rótulo R$ 1.500 para o P20 de R$ 1.504).
+    """
+    from src.advisor import derivar_segmento, quintil_renda_br
+
+    limites = [*config.BR_MONTHLY_INCOME_EDGES, config.BR_TOP_SEGMENT_MIN_INCOME]
+    bordas = sorted({b for chave in config.INCOME_BANDS for b in _limites_da_faixa(chave)} - {0.0, float("inf")})
+    for limite in limites:  # todo limite oficial tem uma borda de faixa a até 2%
+        assert min(abs(b - limite) / limite for b in bordas) <= 0.02, limite
+
+    quintis_cobertos = set()
+    for chave, (_, valor) in config.INCOME_BANDS.items():
+        lo, hi = _limites_da_faixa(chave)
+        lo_int, hi_int = lo * 1.02, min(hi * 0.98, 1e6)
+        assert lo < valor < hi, chave
+        for renda in (lo_int, valor, hi_int):
+            assert quintil_renda_br(renda) == quintil_renda_br(valor), (chave, renda)
+            assert derivar_segmento(40, renda) == derivar_segmento(40, valor), (chave, renda)
+        quintis_cobertos.add(quintil_renda_br(valor))
+    assert quintis_cobertos == set(range(config.N_INCOME_QUANTILES))
 
 
 def test_tempo_de_conta_nao_passa_da_idade() -> None:
@@ -143,13 +178,13 @@ def test_tela_inicial_mostra_etapa_1_e_aviso(app: AppTest) -> None:
 
 
 def test_voltar_preserva_respostas(app: AppTest) -> None:
-    _definir(app, "renda_faixa", "7000_12000")
+    _definir(app, "renda_faixa", "10000_25000")
     app.button(key="btn_avancar").click()
     app.run()
     assert app.subheader[0].value == "Suas finanças"
     app.button(key="btn_voltar").click()
     app.run()
-    assert app.select_slider(key="w_renda_faixa").value == "7000_12000"
+    assert app.select_slider(key="w_renda_faixa").value == "10000_25000"
 
 
 def test_persona_endividada_ativa_modo_protecao(app: AppTest) -> None:
@@ -204,7 +239,7 @@ def test_sem_modelos_mostra_instrucoes(tmp_path: Path, monkeypatch: pytest.Monke
 
 
 def test_conversa_no_resultado(app: AppTest, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Chat do assessor (D37) com provedor falso: pergunta → simulação → resposta na tela."""
+    """Chat do assessor (D38) com provedor falso: pergunta → simulação → resposta na tela."""
     from app import assistente
     from src.llm import ChamadaFerramenta, RespostaLLM
 

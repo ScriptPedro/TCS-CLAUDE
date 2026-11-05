@@ -1,4 +1,4 @@
-"""Testes do assessor conversacional (D37), sem rede: o Gemini é substituído por um provedor falso."""
+"""Testes do assessor conversacional (D38), sem rede: o Gemini é substituído por um provedor falso."""
 
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from tests.test_recommender import _signal_data
 
 MODERADO = {
     **ui.respostas_padrao(),
-    "idade": 41, "dependentes": "1_a_2", "renda_faixa": "4000_7000", "cartao_faixa": "10_30",
+    "idade": 41, "dependentes": "1_a_2", "renda_faixa": "4500_10000", "cartao_faixa": "10_30",
     "divida_cara": "nao", "reserva_faixa": "6_12", "conta_faixa": "mais_10", "objetivo": "aposentadoria",
     "prazo": "3_a_5_anos", "tolerancia": "manteria", "produtos": ["conta", "poupanca", "deposito"],
 }
-ENDIVIDADO = {**MODERADO, "idade": 23, "renda_faixa": "1500_2500", "cartao_faixa": "30_50",
+ENDIVIDADO = {**MODERADO, "idade": 23, "renda_faixa": "1800_2500", "cartao_faixa": "30_50",
               "divida_cara": "sim", "reserva_faixa": "nao_tenho", "produtos": ["conta", "cartao"]}
 SAIU_DO_APERTO = {"divida_cara": "nao", "cartao_faixa": "ate_10", "reserva_faixa": "acima_12"}
 
@@ -82,7 +82,7 @@ def test_contexto_tem_os_numeros_do_assessor_e_so_faixas(artefatos: advisor.Arte
     res = _rec(MODERADO, artefatos)
     ctx = assistente.contexto(res, MODERADO)
     assert "35 a 44 anos" in ctx and "41" not in ctx  # idade exata não sai do servidor
-    assert "R$ 4.000 a R$ 7.000" in ctx               # renda só como faixa
+    assert "R$ 4.500 a R$ 10.000" in ctx               # renda só como faixa
     for classe, pct in res.carteira.alocacao.items():
         assert f"{config.CLASS_INFO[classe]['nome']}: {pct}%" in ctx
     assert res.carteira.perfil_efetivo in ctx and config.DISCLAIMER in ctx

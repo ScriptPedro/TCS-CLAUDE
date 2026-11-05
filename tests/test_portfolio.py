@@ -154,14 +154,33 @@ def test_explicacao_tem_aviso_e_alertas() -> None:
 STATS = {"income_quantile_edges": [10_000.0, 40_000.0, 60_000.0, 80_000.0, 120_000.0, 500_000.0]}
 
 
-@pytest.mark.parametrize("renda, quintil", [(1_000, 0), (1_500, 1), (3_000, 2), (5_000, 3), (50_000, 4)])
+@pytest.mark.parametrize("renda, quintil", [
+    (1_000, 0), (1_504, 0), (1_505, 1), (1_829, 1), (2_000, 2), (3_000, 3), (4_470, 3), (4_471, 4), (50_000, 4),
+])
 def test_quintil_renda_br(renda: float, quintil: int) -> None:
+    """Os limites da PNAD são superiores e inclusivos: quem ganha o P20 exato fica no 1º quintil."""
     assert advisor.quintil_renda_br(renda) == quintil
 
 
+def test_limites_de_renda_sao_os_da_pnad() -> None:
+    assert config.BR_MONTHLY_INCOME_EDGES == sorted(config.BR_MONTHLY_INCOME_EDGES)
+    assert len(config.BR_MONTHLY_INCOME_EDGES) == config.N_INCOME_QUANTILES - 1
+    assert config.BR_TOP_SEGMENT_MIN_INCOME > config.BR_MONTHLY_INCOME_EDGES[-1]  # P95 > P80
+
+
 def test_renda_equivalente_cresce_com_renda_br() -> None:
-    valores = [advisor.renda_equivalente_eur(r, STATS) for r in (1_000, 2_000, 3_000, 5_000, 10_000)]
+    valores = [advisor.renda_equivalente_eur(r, STATS) for r in (1_000, 1_700, 2_000, 3_000, 5_000)]
     assert valores == sorted(valores) and len(set(valores)) == 5
+
+
+@pytest.mark.parametrize("idade, renda, segmento", [
+    (23, 50_000, "universitario"),          # jovem: universitário, mesmo com renda alta
+    (40, 6_000, "particulares"),            # quintil mais alto, mas abaixo do P95
+    (40, 10_174, "particulares"),           # P95 exato ainda não é top
+    (40, 10_175, "top"),
+])
+def test_segmento_top_so_acima_do_p95(idade: int, renda: float, segmento: str) -> None:
+    assert advisor.derivar_segmento(idade, renda) == segmento
 
 
 def test_linha_do_questionario() -> None:

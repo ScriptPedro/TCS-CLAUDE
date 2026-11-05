@@ -1,4 +1,4 @@
-"""Acesso ao modelo de linguagem do assessor conversacional (D37).
+"""Acesso ao modelo de linguagem do assessor conversacional (D38).
 
 Este módulo só conversa com o fornecedor (hoje o Google Gemini). Ele não conhece
 carteira, perfil nem regras: recebe instruções, mensagens e ferramentas e devolve

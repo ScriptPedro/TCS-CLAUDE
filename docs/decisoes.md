@@ -133,7 +133,7 @@ Este documento é a "cola" para defender o projeto na banca.
     "experiência com investimentos".
   - **Nova pergunta:** "Há quanto tempo você tem conta em banco?" → `antiguedad`.
   - **Regras:** `ind_actividad_cliente = 1` (quem usa o app é ativo); `segmento` derivado por regra
-    (universitário se idade < 25 e estudante; top se a renda estiver no quintil mais alto).
+    (universitário se idade < 25 e estudante; top se a renda estiver acima do P95 brasileiro, ver D37).
   - **Renda:** BRL → quintil brasileiro → mediana da renda espanhola do mesmo quintil (coerente com D3).
 
 ## D17 — Formulação: um LightGBM por item, sem o próprio item nas features
@@ -242,12 +242,30 @@ Este documento é a "cola" para defender o projeto na banca.
 - Um LLM (ex.: Claude) poderia reescrever o texto em tom mais natural, recebendo os números como entrada
   e sem poder alterá-los. Fica como próximo passo.
 
-## D27 — Ponte de renda BRL → EUR (pendente de dado oficial)
+## D27 — Ponte de renda BRL → EUR (quintis oficiais da PNAD Contínua)
 
 - Renda mensal BRL → quintil brasileiro → média geométrica dos limites do mesmo quintil na base
   espanhola (coerente com D3).
-- Os limites brasileiros no `config.py` (R$ 1.500 / 2.500 / 4.000 / 7.000) são **aproximações** e devem
-  ser substituídos pelos quintis oficiais da PNAD Contínua (IBGE) antes da apresentação.
+- **Fonte dos limites:** IBGE, PNAD Contínua 2025, SIDRA **Tabela 7540**: limites superiores das classes
+  de percentual das pessoas em ordem crescente de rendimento **habitualmente recebido**, a preços médios
+  de 2025, Brasil. Cópia dos arquivos em `data/external/`.
+
+  | P10 | P20 | P40 | P50 | P60 | P80 | P90 | P95 | P99 |
+  |---|---|---|---|---|---|---|---|---|
+  | R$ 801 | **R$ 1.504** | **R$ 1.829** | R$ 2.037 | **R$ 2.546** | **R$ 4.470** | R$ 6.985 | **R$ 10.174** | R$ 24.839 |
+
+  Em negrito, os valores usados (`BR_MONTHLY_INCOME_EDGES` e `BR_TOP_SEGMENT_MIN_INCOME`).
+- **Por que essa tabela:** é renda **individual**, o que o app pergunta. A domiciliar per capita (Tabelas
+  7526/7531) divide a renda da casa por todos os moradores, crianças inclusive, e daria limites bem mais
+  baixos. "Habitual" (um mês normal) foi preferido a "efetivamente recebido", que inclui 13º e bônus pontuais.
+- **Ressalva:** o rendimento habitual da PNAD é do **trabalho** e **bruto**. Por isso a pergunta do app
+  passou a ser "renda mensal **bruta**". Aposentados e quem vive de outras fontes ficam fora da
+  distribuição de referência.
+- **Fronteira inclusiva:** como a PNAD publica *limites superiores*, quem ganha exatamente o P20 fica no
+  1º quintil (`searchsorted(..., side="left")`).
+- **Leitura dos dados:** o intervalo P20–P40 é estreito (R$ 1.504 a R$ 1.829) porque muita gente recebe
+  perto do salário mínimo (R$ 1.518 em 2025). Os limites aproximados anteriores (R$ 1.500 / 2.500 / 4.000 /
+  7.000) superestimavam os três quintis de cima.
 
 ## D28 — App fino: layout no `main.py`, lógica testável fora dele
 
@@ -314,7 +332,7 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
 - Renda, gasto no cartão, reserva e tempo de conta passaram a ser escolhidos por **faixas** (controle
   deslizante). O cartão é perguntado como **% da renda** e a reserva como **meses de renda**, que é como
   as regras raciocinam.
-- Cada faixa vira um valor representativo (ex.: "R$ 4.000 a R$ 7.000" → R$ 5.500).
+- Cada faixa vira um valor representativo (ex.: "R$ 4.500 a R$ 10.000" → R$ 7.000).
 - **As bordas das faixas coincidem com os limites das regras** (30% no cartão, 6 e 12 meses de
   reserva), então a faixa escolhida decide a regra sem ambiguidade. Há um teste que verifica isso.
 - O questionário virou um assistente em 4 etapas (Sobre você · Suas finanças · Seus objetivos · Você e o
@@ -375,7 +393,34 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
   usuário); usar o Raio X para os quintis de renda da D27 (só tem faixas largas; a PNAD continua sendo a
   fonte indicada).
 
-## D37 — Assessor conversacional com LLM: explica e simula, nunca calcula
+## D37 — Segmento "top" pelo P95, e faixas de renda alinhadas à PNAD
+
+- **Problema:** com os limites oficiais (D27), o quintil mais alto começa em R$ 4.470. A regra antiga
+  ("top" = quintil mais alto) classificaria 20% dos usuários como top, mas na base de treino o segmento
+  top é só **3,8%** dos clientes. A persona "Adulto moderado" (R$ 6.000) viraria top.
+- **Decisão:** `top` só para renda **acima do P95** (R$ 10.174), proporção próxima à do treino. O quintil
+  continua definindo a renda equivalente (D27); só o segmento usa o P95.
+- **Faixas do questionário** (D34) refeitas para que cada uma caia inteira em um quintil e em um segmento:
+
+  | Faixa | Valor usado | Quintil | Segmento (idade ≥ 25) |
+  |---|---|---|---|
+  | Até R$ 1.500 | R$ 1.200 | 1º | particulares |
+  | R$ 1.500 a R$ 1.800 | R$ 1.650 | 2º | particulares |
+  | R$ 1.800 a R$ 2.500 | R$ 2.150 | 3º | particulares |
+  | R$ 2.500 a R$ 4.500 | R$ 3.500 | 4º | particulares |
+  | R$ 4.500 a R$ 10.000 | R$ 7.000 | 5º | particulares |
+  | R$ 10.000 a R$ 25.000 | R$ 15.000 | 5º | top |
+  | Acima de R$ 25.000 | R$ 30.000 | 5º | top |
+
+- As bordas são os limites oficiais arredondados (diferença ≤ 2%, ex.: R$ 1.500 para o P20 de R$ 1.504),
+  mais fáceis de ler no app. O teste `test_faixas_de_renda_alinhadas_aos_limites_da_pnad` garante que
+  todo limite tem uma borda próxima, que cada faixa cai em um só quintil e segmento e que os 5 quintis
+  são alcançáveis.
+- A resposta padrão passou a ser "R$ 1.800 a R$ 2.500", a faixa da mediana (P50 = R$ 2.037).
+- **Para atualizar no futuro:** baixar a Tabela 7540 do ano mais recente, trocar os valores no `config.py`
+  e rodar o `pytest`. Se o teste de alinhamento falhar, ajustar as bordas de `INCOME_BANDS`.
+
+## D38 — Assessor conversacional com LLM: explica e simula, nunca calcula
 
 - **Contexto:** a carteira já vem explicada por template (D26, D35), mas o usuário não consegue perguntar
   "por quê?" nem "e se eu quitar o cartão?". A D26 deixou "texto por LLM, sem permissão para alterar
@@ -393,7 +438,7 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
     escrever outra classe com o método `gerar`.
   - **Opcional:** sem `GEMINI_API_KEY`, sem internet ou com o limite do plano estourado, o chat avisa e o
     resto do app funciona igual (importante para a demo offline).
-  - **Privacidade:** o modelo recebe faixas (renda "R$ 4.000 a R$ 7.000", "35 a 44 anos"), nunca a idade
+  - **Privacidade:** o modelo recebe faixas (renda "R$ 4.500 a R$ 10.000", "35 a 44 anos"), nunca a idade
     exata; a ferramenta não aceita mudar a idade.
 - **LGPD e plano gratuito:** pelos termos do Google, no plano gratuito o conteúdo enviado pode ser usado
   para melhorar os produtos dele e revisado por pessoas (a exceção vale só para Europa, Reino Unido e

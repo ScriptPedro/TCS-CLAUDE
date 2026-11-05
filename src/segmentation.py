@@ -46,7 +46,7 @@ from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, StandardScaler
 from src import config
 from src.eda import save_fig, set_style
 from src.features import add_model_features
-from src.utils import caminho_relativo, fmt_num, get_logger
+from src.utils import caminho_relativo, fmt_num, get_logger, usar_backend_sem_janela
 
 logger = get_logger(__name__)
 
@@ -551,6 +551,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    usar_backend_sem_janela()
     args = parse_args()
     run(args.input, args.model, args.data_out, args.report, args.fig_dir, args.k)
 

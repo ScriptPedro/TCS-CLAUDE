@@ -3,7 +3,7 @@ import { ErroApi, buscarInfoConversa, perguntarAssistente } from "../api";
 import { Markdown } from "../texto";
 import type { InfoConversa, MensagemConversa, Respostas, Simulacao } from "../types";
 
-/** Assessor conversacional (D37): só exibe o que a API devolve; nenhum cálculo aqui. */
+/** Assessor conversacional (D38): só exibe o que a API devolve; nenhum cálculo aqui. */
 export default function Conversa({ respostas }: { respostas: Respostas }) {
   const [info, setInfo] = useState<InfoConversa | null>(null);
   const [mensagens, setMensagens] = useState<MensagemConversa[]>([]);

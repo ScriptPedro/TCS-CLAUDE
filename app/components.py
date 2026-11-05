@@ -63,8 +63,8 @@ PERGUNTAS: dict[str, Pergunta] = {
         ajuda="Renda variável pede uma reserva de emergência maior.",
     ),
     "renda_faixa": Pergunta(
-        "Qual é a sua renda mensal líquida?", "faixa", list(config.INCOME_BANDS),
-        _faixas(config.INCOME_BANDS), "4000_7000", ajuda="O valor que cai na conta por mês, já com descontos.",
+        "Qual é a sua renda mensal bruta?", "faixa", list(config.INCOME_BANDS),
+        _faixas(config.INCOME_BANDS), "1800_2500", ajuda="O que você costuma receber por mês, antes dos descontos (mesmo conceito do IBGE).",
     ),
     # Etapa 2 — Suas finanças
     "cartao_faixa": Pergunta(
