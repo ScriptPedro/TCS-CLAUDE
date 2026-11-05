@@ -1,0 +1,32 @@
+﻿"Tabela 7540 - Limites superiores das classes de percentual das pessoas em ordem crescente de rendimento habitualmente recebido, a preços médios do último ano"
+"Variável - Limites superiores das classes de percentual das pessoas em ordem crescente de rendimento habitualmente recebido, a preços médios do último ano (Reais)"
+"";"Ano x Classes de percentual em ordem crescente de rendimento habitualmente recebido"
+"";"2025"
+"";"P10";"P20";"P40";"P50";"P60";"P80"
+"Brasil";"801";"1504";"1829";"2037";"2546";"4470"
+"Fonte: IBGE. Pesquisa Nacional por Amostra de Domicílios Contínua, acumulado de primeiras visitas, exceto 2020-2022, acumulado de quintas visitas, devido à pandemia de Covid-19."
+
+"Notas"
+"O rendimento de trabalho é captado somente para pessoas de 14 anos ou mais de idade. 
+O rendimento real é obtido conforme deflacionamento especificado nas Notas Técnicas da PNAD Contínua.
+Os limites superiores de cada classe são definidos pelos respectivos percentis da distribuição do rendimento habitualmente recebido pelos moradores, representados por P5, P10, P20...
+A proporção exata da população em cada classe pode ser vista nas Tabelas 7541 e 7563.
+A partir de 19 de novembro de 2021, as estimativas deste tema passaram a ser divulgadas com base no novo método de ponderação da pesquisa, conforme a Nota Técnica 03/2021. Consequentemente, a série histórica dos indicadores foi atualizada.
+Até o 3º trimestre de 2015, as pessoas em licença remunerada na semana de referência da pesquisa e que estavam afastadas por período inferior a 4 meses eram classificadas como ""ocupadas"". Caso esse afastamento fosse igual ou superior a 4 meses, essas pessoas eram definidas como ""fora da força de trabalho"" e, portanto, não se investigava o rendimento do trabalho. A partir do 4º trimestre de 2015, em acordo com as recomendações da 19ª Conferência Internacional de Estatísticos do Trabalho - CIET, da OIT, pessoas em licença remunerada, independentemente do tempo de afastamento, passaram a ser classificadas como ""ocupadas"" e seus rendimentos do trabalho foram coletados normalmente."
+""
+"Legenda"
+"Símbolo";"Significado"
+"-";"Zero absoluto, não resultante de um cálculo ou arredondamento.
+Ex: Em determinado município não existem pessoas de 14 anos de idade sem instrução."
+"0";"Zero resultante de um cálculo ou arredondamento.
+Ex: A inflação do feijão em determinada Região Metropolitana foi 0.
+Determinado município produziu 400 kg de sementes de girassol e os dados da tabela são expressos em toneladas."
+"X";"Valor inibido para não identificar o informante.
+Ex: Determinado município só possui uma empresa produtora de cimento, logo o valor de sua produção deve ser inibido."
+"..";"Valor não se aplica.
+Ex: Não se pode obter o total da produção agrícola em determinado município quando os produtos agrícolas são contabilizados com unidades de medida distintas."
+"...";"Valor não disponível.
+Ex: A produção de feijão em determinado município não foi pesquisada ou determinado município não existia no ano da pesquisa."
+"A a Z
+(exceto X)";"Significa uma faixa de valores. Varia em função da tabela (se for o caso).
+Ex: O nível de precisão da produção estimada de combustíveis está na faixa A (95 a 100%)"

@@ -23,8 +23,8 @@
   "você **deve** ter".
 - **Ponte questionário → features (D16, D27):** o usuário do app não é cliente Santander. A antiguidade
   vem do "tempo de conta em banco", o segmento vem de uma regra, a atividade é fixa em 1 e a renda é
-  convertida por quintil com **limites brasileiros aproximados**. Existe diferença entre os dados de
-  treino e os do app (*train-serve skew*).
+  convertida por quintil com os limites da PNAD Contínua 2025 (renda **do trabalho**, bruta). Existe
+  diferença entre os dados de treino e os do app (*train-serve skew*).
 - **O LightGBM pode não superar o baseline:** nos dados sintéticos, ele só venceu quando havia sinal
   individual além do segmento (D20). Se o baseline vencer nos dados reais, isso é um resultado válido e
   deve ser apresentado como tal.
@@ -74,7 +74,7 @@
 ## 6. Próximos passos
 
 1. **Rodar com os dados reais** e revisar os nomes dos clusters, as figuras e os números dos slides.
-2. **Substituir os limites de renda** pelos quintis oficiais da PNAD Contínua (IBGE).
+2. **Atualizar os limites de renda** a cada nova divulgação da PNAD Contínua (SIDRA, Tabela 7540).
 3. **Dados brasileiros de posse registrada** (ex.: Open Finance, com consentimento) para treinar o modelo
    sem a analogia Espanha → Brasil. O Raio X (D36) já traz a referência brasileira, mas é pesquisa
    declarada e pequena demais para treinar.

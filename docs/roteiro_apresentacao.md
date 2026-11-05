@@ -34,7 +34,7 @@ Mensagem central, para repetir no início e no fim:
 
 - [ ] Pipeline rodado com os dados **reais** (`python -m src.pipeline`) e figuras atualizadas nos slides
 - [ ] Nomes dos clusters revisados (`CLUSTER_NAME_OVERRIDES` no `config.py`)
-- [ ] Quintis de renda da PNAD/IBGE no `config.py` (D27)
+- [x] Quintis de renda da PNAD/IBGE no `config.py` (D27, D37)
 - [ ] `pytest` passando
 - [ ] App testado no notebook da apresentação, **sem internet**
 - [ ] Vídeo de 90 s da demo gravado (plano B)
