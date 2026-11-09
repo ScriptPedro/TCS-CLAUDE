@@ -419,3 +419,60 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
 - A resposta padrão passou a ser "R$ 1.800 a R$ 2.500", a faixa da mediana (P50 = R$ 2.037).
 - **Para atualizar no futuro:** baixar a Tabela 7540 do ano mais recente, trocar os valores no `config.py`
   e rodar o `pytest`. Se o teste de alinhamento falhar, ajustar as bordas de `INCOME_BANDS`.
+
+## D38 — Deploy no Google Cloud (Cloud Run) com Terraform, dentro da cota grátis
+
+- **Contexto:** o app precisa de um endereço público para a apresentação, sem custo. O crédito
+  acadêmico (Azure for Students) não foi liberado para a conta do projeto.
+- **Decisão:** um único contêiner (`Dockerfile`) com a API FastAPI servindo também o front React
+  compilado, rodando no **Cloud Run** em `us-central1`. A infraestrutura fica em `infra/gcp/`
+  (Artifact Registry, bucket do Cloud Storage, conta de serviço, Cloud Run e um alerta de orçamento
+  opcional).
+  - **Modelos fora da imagem:** os `.joblib` e `.json` ficam num bucket privado, montado somente leitura
+    em `/models`, que é para onde aponta `ASSESSOR_MODELS_DIR` (o código não mudou). Retreinar não
+    exige montar a imagem de novo.
+  - **Imagem enxuta:** `requirements-deploy.txt` leva só o que a API usa (sem jupyterlab, streamlit,
+    kaggle, seaborn, openpyxl, pytest), mantendo as **mesmas versões** do `requirements.txt`, já que os
+    modelos serializados só carregam com as versões do treino. O teste `tests/test_deploy.py` garante
+    isso. A imagem fica perto de 280 MB, e o repositório guarda só a versão mais recente para caber nos
+    0,5 GB grátis.
+  - **Custo controlado:** mínimo de 0 e máximo de 1 instância, CPU cobrada só durante as requisições,
+    sem *startup boost*. O preço é uma espera de alguns segundos no primeiro acesso depois de um tempo
+    parado.
+  - **Dois applies:** o primeiro cria o repositório e o bucket (`imagem_tag` vazio). Depois do
+    `docker push`, o segundo cria o Cloud Run. Montar a imagem fica fora do Terraform (Docker local ou
+    Cloud Build).
+- **Alternativas descartadas:**
+  - **AWS** (App Runner/Fargate não têm camada grátis; EC2 grátis só por tempo limitado e ligada 24 h).
+  - **Azure** (o registro de imagens é pago, e o crédito estudantil não foi liberado).
+  - **Modelos dentro da imagem** (obriga a montar a imagem a cada retreino e a imagem cresce).
+  - **Streamlit como front publicado** (o front React + API já entrega o mesmo fluxo num só servidor).
+  - **Região São Paulo** (fora da cota grátis do Cloud Storage).
+
+## D39 — Deploy com Terraform no Docker local (sem nuvem)
+
+- **Contexto:** a conta do Google Cloud não foi ativada. O cadastro do teste grátis deu o erro
+  OR_BACR2_59, e a alternativa exigia um pré-pagamento de R$ 200. Os créditos estudantis (Azure for
+  Students) também não foram liberados. O professor autorizou entregar o deploy no Docker.
+- **Decisão:** `infra/docker/` usa o provider `kreuzwerker/docker` para que o Terraform:
+  - monte a imagem a partir do mesmo `Dockerfile` da D38;
+  - crie a rede e suba o contêiner, com a pasta `models/` montada somente leitura em `/models`;
+  - opcionalmente, suba um túnel rápido do Cloudflare com um endereço público temporário, sem conta
+    e sem cartão, para a banca acessar.
+  - **Imagem refeita só quando precisa:** um hash dos arquivos que entram na imagem (`src/`, `app/`,
+    `api/`, `frontend/`, `Dockerfile`, `requirements-deploy.txt`) dispara um novo build quando o código
+    muda. Sem mudança, o `apply` não altera nada.
+  - **Verificações:** o `apply` só termina com o contêiner saudável, ou seja, com `/api/saude`
+    respondendo `modelos: true`. Uma *precondition* falha antes de qualquer build se faltar algum modelo.
+  - **Windows ou Linux:** o endereço do Docker é detectado pelo sistema (npipe do Docker Desktop no
+    Windows, socket no Linux/macOS).
+  - `infra/gcp/` (D38) continua no repositório: com uma conta de faturamento ativa, a mesma imagem sobe
+    no Cloud Run sem mudar o código.
+- **Alternativas descartadas:**
+  - **docker compose** (é uma ferramenta de orquestração, não infraestrutura como código com estado,
+    plano e destroy; o requisito era Terraform).
+  - **Hugging Face Spaces** (não tem provider oficial de Terraform).
+  - **Pagar o pré-pagamento do Google ou cadastrar cartão na AWS** (fora do orçamento do projeto).
+  - **Túnel com conta do Cloudflare e domínio próprio** (dá um endereço fixo, mas exige conta e domínio).
+- **Limitação:** o app fica no ar apenas enquanto o computador estiver ligado. O link do túnel muda a
+  cada reinício e depende de um serviço gratuito sem garantia de disponibilidade.

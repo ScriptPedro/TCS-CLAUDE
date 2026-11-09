@@ -22,3 +22,10 @@ __pycache__/
 .claude/*
 !.claude/settings.json
 !.claude/hooks/
+
+# Terraform (estado e variáveis locais podem conter dados da conta)
+infra/*/.terraform/
+infra/*/*.tfstate
+infra/*/*.tfstate.*
+infra/*/terraform.tfvars
+infra/*/*.tfplan

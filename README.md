@@ -43,10 +43,12 @@ assessor-investimentos/
 ├── data/raw/              # train_ver2.csv e microdados do Raio X (não versionados)
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
 ├── docs/
-│   ├── decisoes.md        # D1–D37: cada decisão técnica e as alternativas descartadas
+│   ├── decisoes.md        # D1–D39: cada decisão técnica e as alternativas descartadas
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
+├── infra/docker/         # Terraform: sobe o app no Docker local, com link público opcional (D39)
+├── infra/gcp/            # Terraform: Google Cloud Run na cota grátis (D38); Dockerfile na raiz
 ├── models/                # segmentation.joblib, recommender.joblib, prep_stats.json, raio_x.json
 ├── notebooks/01_eda.ipynb # Etapa 3
 ├── reports/               # qualidade, segmentação, recomendação, Raio X, personas, auditoria de viés
@@ -153,6 +155,15 @@ cd frontend; npm install; npm run dev          # terminal 2: front em http://loc
 Para apresentar com um único servidor: `cd frontend; npm run build` e depois só a API
 (`uvicorn api.main:app --port 8000`), que passa a servir o front em http://localhost:8000.
 
+### Publicar na nuvem
+
+O `Dockerfile` empacota a API e o front num só contêiner, e o Terraform sobe esse contêiner:
+
+- **[infra/docker](infra/docker/README.md):** no Docker do próprio computador, grátis e sem cartão, com
+  link público temporário opcional para a banca (D39). Basta `cd infra\docker; terraform init; terraform apply`.
+- **[infra/gcp](infra/gcp/README.md):** no Google Cloud Run, dentro da cota grátis, com os modelos num
+  bucket (D38). Exige conta de faturamento ativa.
+
 ## Tempo esperado
 
 Num notebook comum: leitura do CSV de 2,3 GB em chunks, poucos minutos; segmentação com k = 2..10 em
@@ -168,6 +179,8 @@ sintéticos com 10 mil clientes, o pipeline completo levou ~21 s.
 
 ## Documentação
 
-- [Decisões técnicas (D1–D37)](docs/decisoes.md)
+- [Decisões técnicas (D1–D39)](docs/decisoes.md)
+- [Deploy com Terraform no Docker local](infra/docker/README.md)
+- [Deploy com Terraform no Google Cloud (cota grátis)](infra/gcp/README.md)
 - [Limitações, vieses, ética e próximos passos](docs/limitacoes.md)
 - [Roteiro de apresentação e perguntas da banca](docs/roteiro_apresentacao.md)

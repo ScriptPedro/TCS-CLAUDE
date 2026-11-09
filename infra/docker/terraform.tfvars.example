@@ -1,0 +1,6 @@
+# Opcional: copie para terraform.tfvars (fora do git) para não repetir -var na linha de comando.
+porta        = 8080
+link_publico = false
+
+# Vazio = pasta models/ do projeto.
+pasta_modelos = ""

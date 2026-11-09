@@ -1,0 +1,15 @@
+# Arquivos que NÃO sobem para o Cloud Build (gcloud builds submit). Mesma ideia do .dockerignore.
+.git
+.gitignore
+.venv
+.claude
+**/__pycache__
+data/
+models/
+reports/
+docs/
+notebooks/
+tests/
+infra/
+frontend/node_modules/
+frontend/dist/
