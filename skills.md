@@ -6,7 +6,7 @@ description: Guia técnico do Assessor de Investimentos Virtual (projeto final d
 # Skills — Assessor de Investimentos Virtual
 
 > Documento de referência técnica, escrito para quem vai **rodar, manter, evoluir ou defender** o projeto.
-> Ele resume o que está espalhado em `README.md`, `docs/decisoes.md` (D1–D37), `docs/limitacoes.md`,
+> Ele resume o que está espalhado em `README.md`, `docs/decisoes.md` (D1–D38), `docs/limitacoes.md`,
 > `reports/*.md` e no código. Quando houver divergência, **o código e o `src/config.py` são a fonte da verdade**.
 
 > ⚠️ Projeto acadêmico. **Não é recomendação de investimento.** Os modelos foram treinados com dados de
@@ -728,7 +728,7 @@ sem falhas de persona → decisão registrada em `docs/decisoes.md` se for escol
 ├── tests/                   # pytest + dados sintéticos
 ├── notebooks/01_eda.ipynb
 ├── docs/
-│   ├── decisoes.md          # D1–D37
+│   ├── decisoes.md          # D1–D38
 │   ├── limitacoes.md
 │   ├── roteiro_apresentacao.md
 │   └── figures/             # 11–18 versionadas

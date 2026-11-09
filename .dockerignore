@@ -1,0 +1,17 @@
+# Só entra na imagem o que o Dockerfile copia; o resto fica de fora para o build ser rápido.
+.git
+.venv
+.claude
+**/__pycache__
+**/*.pyc
+.pytest_cache
+data
+models
+reports
+docs
+notebooks
+tests
+infra
+frontend/node_modules
+frontend/dist
+*.md

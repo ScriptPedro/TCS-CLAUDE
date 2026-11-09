@@ -1,0 +1,10 @@
+# Copie para terraform.tfvars (que fica fora do git) e preencha.
+projeto = "seu-projeto-123456"
+regiao  = "us-central1"
+
+# Deixe vazio no 1º apply; depois do docker push, coloque a tag enviada (ex.: "v1").
+imagem_tag = ""
+
+# Opcional: alerta de gastos por e-mail. Descubra o ID com: gcloud billing accounts list
+conta_faturamento = ""
+orcamento_brl     = 5
