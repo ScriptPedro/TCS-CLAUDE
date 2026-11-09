@@ -1,6 +1,7 @@
-# Imagem de produção do Assessor de Investimentos Virtual (D38).
+# Imagem de produção do Assessor de Investimentos Virtual (D38, D39).
 # Um único contêiner: o FastAPI responde em /api e serve o front React compilado.
-# Os modelos NÃO entram na imagem: o Cloud Run monta o bucket em /models.
+# Os modelos NÃO entram na imagem: ficam montados em /models (pasta local no Docker,
+# bucket no Cloud Run). Normalmente quem monta e sobe é o Terraform em infra/.
 #
 #   docker build -t assessor .
 #   docker run -p 8080:8080 -v "$PWD/models:/models:ro" assessor   → http://localhost:8080

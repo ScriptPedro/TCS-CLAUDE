@@ -36,7 +36,9 @@ def test_requirements_deploy_tem_o_que_a_api_precisa():
 
 def test_dockerfile_aponta_para_a_pasta_montada_pelo_terraform():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
-    main_tf = (ROOT / "infra" / "terraform" / "main.tf").read_text(encoding="utf-8")
+    gcp = (ROOT / "infra" / "gcp" / "main.tf").read_text(encoding="utf-8")
+    docker = (ROOT / "infra" / "docker" / "main.tf").read_text(encoding="utf-8")
     assert "ASSESSOR_MODELS_DIR=/models" in dockerfile
-    assert re.search(r'mount_path\s*=\s*"/models"', main_tf)
+    assert re.search(r'mount_path\s*=\s*"/models"', gcp)
+    assert re.search(r'container_path\s*=\s*"/models"', docker)
     assert "requirements-deploy.txt" in dockerfile

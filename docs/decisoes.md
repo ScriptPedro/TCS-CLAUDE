@@ -425,7 +425,7 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
 - **Contexto:** o app precisa de um endereço público para a apresentação, sem custo. O crédito
   acadêmico (Azure for Students) não foi liberado para a conta do projeto.
 - **Decisão:** um único contêiner (`Dockerfile`) com a API FastAPI servindo também o front React
-  compilado, rodando no **Cloud Run** em `us-central1`. A infraestrutura fica em `infra/terraform/`
+  compilado, rodando no **Cloud Run** em `us-central1`. A infraestrutura fica em `infra/gcp/`
   (Artifact Registry, bucket do Cloud Storage, conta de serviço, Cloud Run e um alerta de orçamento
   opcional).
   - **Modelos fora da imagem:** os `.joblib` e `.json` ficam num bucket privado, montado somente leitura
@@ -448,3 +448,31 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
   - **Modelos dentro da imagem** (obriga a montar a imagem a cada retreino e a imagem cresce).
   - **Streamlit como front publicado** (o front React + API já entrega o mesmo fluxo num só servidor).
   - **Região São Paulo** (fora da cota grátis do Cloud Storage).
+
+## D39 — Deploy com Terraform no Docker local (sem nuvem)
+
+- **Contexto:** a conta do Google Cloud não foi ativada. O cadastro do teste grátis deu o erro
+  OR_BACR2_59, e a alternativa exigia um pré-pagamento de R$ 200. Os créditos estudantis (Azure for
+  Students) também não foram liberados. O professor autorizou entregar o deploy no Docker.
+- **Decisão:** `infra/docker/` usa o provider `kreuzwerker/docker` para que o Terraform:
+  - monte a imagem a partir do mesmo `Dockerfile` da D38;
+  - crie a rede e suba o contêiner, com a pasta `models/` montada somente leitura em `/models`;
+  - opcionalmente, suba um túnel rápido do Cloudflare com um endereço público temporário, sem conta
+    e sem cartão, para a banca acessar.
+  - **Imagem refeita só quando precisa:** um hash dos arquivos que entram na imagem (`src/`, `app/`,
+    `api/`, `frontend/`, `Dockerfile`, `requirements-deploy.txt`) dispara um novo build quando o código
+    muda. Sem mudança, o `apply` não altera nada.
+  - **Verificações:** o `apply` só termina com o contêiner saudável, ou seja, com `/api/saude`
+    respondendo `modelos: true`. Uma *precondition* falha antes de qualquer build se faltar algum modelo.
+  - **Windows ou Linux:** o endereço do Docker é detectado pelo sistema (npipe do Docker Desktop no
+    Windows, socket no Linux/macOS).
+  - `infra/gcp/` (D38) continua no repositório: com uma conta de faturamento ativa, a mesma imagem sobe
+    no Cloud Run sem mudar o código.
+- **Alternativas descartadas:**
+  - **docker compose** (é uma ferramenta de orquestração, não infraestrutura como código com estado,
+    plano e destroy; o requisito era Terraform).
+  - **Hugging Face Spaces** (não tem provider oficial de Terraform).
+  - **Pagar o pré-pagamento do Google ou cadastrar cartão na AWS** (fora do orçamento do projeto).
+  - **Túnel com conta do Cloudflare e domínio próprio** (dá um endereço fixo, mas exige conta e domínio).
+- **Limitação:** o app fica no ar apenas enquanto o computador estiver ligado. O link do túnel muda a
+  cada reinício e depende de um serviço gratuito sem garantia de disponibilidade.

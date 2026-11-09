@@ -2,6 +2,7 @@
 
 Sobe o app (API FastAPI + front React) no **Cloud Run**, com os modelos num bucket do **Cloud Storage**
 e a imagem no **Artifact Registry**. A escolha e os limites estão na decisão D38 (`docs/decisoes.md`).
+Sem conta de faturamento? Use [`infra/docker`](../docker/README.md), que roda no Docker local.
 
 ```
 Usuário ──► Cloud Run (contêiner: uvicorn api.main:app + frontend/dist)
@@ -52,7 +53,7 @@ gcloud config set project assessor-tcc-123456
 ### 2. Primeiro apply: repositório de imagens e bucket
 
 ```powershell
-cd infra\terraform
+cd infra\gcp
 copy terraform.tfvars.example terraform.tfvars   # preencha projeto (e conta_faturamento, se quiser o alerta)
 terraform init
 terraform apply                                   # imagem_tag ainda vazio: não cria o Cloud Run
@@ -92,7 +93,7 @@ gcloud builds submit --tag "$REPO/assessor:v1" .
 Em `terraform.tfvars`, coloque `imagem_tag = "v1"` e rode:
 
 ```powershell
-cd infra\terraform
+cd infra\gcp
 terraform apply
 terraform output url        # endereço público do app
 ```
