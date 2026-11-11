@@ -10,6 +10,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Never push without the user's explicit authorization in the current conversation** — this covers `git push` (including force pushes) and GitHub tools that write to the remote (`push_files`, `create_or_update_file`, `delete_file`, `create_branch`, `merge_pull_request`, `update_pull_request_branch`). Commit locally, show what will be pushed (`git log origin/<branch>..HEAD`), and ask first. `.claude/settings.json` enforces this with `ask` permission rules and a `PreToolUse` hook (`.claude/hooks/revisar-push.sh`) that puts the outgoing commits and changed files in the approval prompt, so the user reviews exactly what leaves before allowing it.
 
+### Autoria dos commits
+
+Mais de uma pessoa usa a mesma conta do Claude. O prefixo da mensagem diz quem está escrevendo, e os commits feitos a partir daquele prompt devem ter essa pessoa como **autor** (é o autor que conta como contribuição no perfil do GitHub). O **committer** continua sendo o Claude (`Claude <noreply@anthropic.com>`), porque as sessões na nuvem assinam os commits com a chave do Claude e o GitHub só os mostra como "Verified" se o committer for ele:
+
+| Prefixo da mensagem | Pessoa | `user.name` | `user.email` |
+|---|---|---|---|
+| `-r` | Rafael K. Shimomura (GitHub `rKakizuko`) | `rkakizuko` | `160166067+rKakizuko@users.noreply.github.com` |
+| sem prefixo | ainda não definido | identidade padrão da sessão | identidade padrão da sessão |
+
+- Defina o autor **em cada commit** com `--author` — não mude o `git config`, porque prompts de pessoas diferentes podem se alternar na mesma sessão e o committer precisa continuar sendo o Claude: `git commit --author="rkakizuko <160166067+rKakizuko@users.noreply.github.com>" ...`
+- Vale o prefixo do prompt que pediu a mudança. Na dúvida sobre quem pediu, pergunte antes de commitar.
+- Mantenha a linha `Co-Authored-By` do Claude no fim da mensagem — o GitHub mostra os dois como autores.
+- Use só e-mails *noreply* do GitHub nesta tabela, para não expor e-mails pessoais no repositório.
+
 ## Commands
 
 **Always use the `.venv` virtual environment (Python 3.11)** — never the global Python; see `skills/ambiente-virtual/SKILL.md` for setup, the activation check and common errors. Python 3.11 (versions pinned in `requirements.txt`; `numba`/`contourpy` are pinned to avoid numpy 2.x, which breaks shap 0.46). Run everything from the repo root, as modules (`python -m src.X`).
