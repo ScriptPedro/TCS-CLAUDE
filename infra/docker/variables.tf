@@ -43,3 +43,20 @@ variable "docker_host" {
   type        = string
   default     = ""
 }
+
+variable "imagem_postgres" {
+  description = "Imagem do PostgreSQL dos usuários (D41), com versão fixada."
+  type        = string
+  default     = "postgres:16.4-alpine"
+}
+
+variable "senha_postgres" {
+  description = <<-EOT
+    Senha do usuário "assessor" no PostgreSQL. O banco só é acessível pela rede interna do Docker
+    (não abre porta no computador), mas troque o padrão em terraform.tfvars se for expor o app.
+    Ela só vale na criação do volume: depois, trocar aqui exige recriar o volume (perde os usuários).
+  EOT
+  type        = string
+  default     = "assessor"
+  sensitive   = true
+}

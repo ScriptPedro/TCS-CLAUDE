@@ -9,7 +9,10 @@ para a banca acessar de outro computador ou do celular. A escolha está na decis
 Terraform ──► docker_image "assessor:local"   (build do Dockerfile: front React + API FastAPI)
           ──► docker_network "assessor"
           ──► docker_container "assessor"      http://localhost:8080
-                    └─ models/ montada somente leitura em /models
+                    ├─ models/ montada somente leitura em /models
+                    └─ ASSESSOR_DATABASE_URL → assessor-postgres
+          ──► docker_container "assessor-postgres"  PostgreSQL dos usuários (D41), só na rede interna
+                    └─ volume "assessor-postgres" em /var/lib/postgresql/data
           ──► docker_container "assessor-tunel"  (opcional) https://<aleatório>.trycloudflare.com
 ```
 
@@ -53,6 +56,20 @@ O endereço `https://...trycloudflare.com` que aparecer funciona de qualquer lug
 
 Para desligar só o link: `terraform apply` (sem a variável).
 
+## Primeiro administrador
+
+O cadastro pela tela cria só usuários comuns. Depois do primeiro `apply`, crie o administrador
+dentro do contêiner:
+
+```powershell
+docker exec -it assessor python -m api.usuarios criar-admin
+```
+
+Os usuários ficam no PostgreSQL do contêiner `assessor-postgres`, com os dados no volume
+`assessor-postgres`. Eles sobrevivem a um novo `apply`, à troca dos contêineres e ao `terraform destroy`.
+A senha do banco é a variável `senha_postgres` (padrão `assessor`). O banco não abre porta no
+computador, mas troque a senha em `terraform.tfvars` antes do primeiro `apply` se for publicar o link.
+
 ## Atualizar
 
 - **Mudou o código** (`src/`, `app/`, `api/`, `frontend/`, `Dockerfile`): rode `terraform apply`. O
@@ -64,6 +81,12 @@ Para desligar só o link: `terraform apply` (sem a variável).
 
 ```powershell
 terraform destroy      # remove contêineres e rede (a imagem fica em cache para o próximo apply)
+```
+
+O volume com os usuários **não** é apagado pelo `destroy`. Para começar do zero, apague-o à mão:
+
+```powershell
+docker volume rm assessor-postgres
 ```
 
 ## Variáveis

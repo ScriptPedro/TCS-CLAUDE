@@ -4,3 +4,6 @@ link_publico = false
 
 # Vazio = pasta models/ do projeto.
 pasta_modelos = ""
+
+# Senha do PostgreSQL dos usuários (D41). Só vale na criação do volume assessor-postgres.
+# senha_postgres = "troque-esta-senha"

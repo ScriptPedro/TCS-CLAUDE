@@ -522,3 +522,31 @@ VIZ_DPI: int = 150
 # ---------------------------------------------------------------------------
 LOG_LEVEL: str = "INFO"
 LOG_FORMAT: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+
+# ---------------------------------------------------------------------------
+# Usuários do sistema (D40) — cadastro, login e gerenciamento pela API
+# ---------------------------------------------------------------------------
+# PostgreSQL (D41). ASSESSOR_DATABASE_URL aponta para outro servidor (contêiner, testes).
+# O padrão é o Postgres local de desenvolvimento descrito no README (senha só para uso local).
+DATABASE_URL: str = "postgresql://assessor:assessor@localhost:5432/assessor"
+DATABASE_TIMEOUT_S: int = 5
+# Idade: inteiro de maioridade (18, como no questionário) até o maior registro verificado
+# da história (Jeanne Calment, 122 anos e 164 dias, morta em 1997)
+IDADE_MINIMA: int = 18
+IDADE_MAXIMA: int = 122
+NOME_MIN_CARACTERES: int = 3
+NOME_MAX_CARACTERES: int = 100
+SENHA_MIN_CARACTERES: int = 8
+SENHA_MAX_CARACTERES: int = 128
+EMAIL_MAX_CARACTERES: int = 254
+# Sessão: token opaco aleatório; o banco guarda só o hash SHA-256 dele
+SESSAO_HORAS: int = 8
+# scrypt (hashlib): custo de memória/CPU do hash de senha (≈16 MB por cálculo)
+SCRYPT_N: int = 2**14
+SCRYPT_R: int = 8
+SCRYPT_P: int = 1
+PAPEIS_USUARIO: tuple[str, ...] = ("usuario", "admin")
+# Login: depois de LOGIN_MAX_TENTATIVAS senhas erradas para o mesmo e-mail/CPF dentro de
+# LOGIN_BLOQUEIO_MINUTOS, esse login fica bloqueado até completar o intervalo sem erros
+LOGIN_MAX_TENTATIVAS: int = 5
+LOGIN_BLOQUEIO_MINUTOS: int = 15

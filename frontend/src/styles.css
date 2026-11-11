@@ -93,9 +93,15 @@ body { background: var(--realce); }
   background: var(--papel); display: flex; flex-direction: column;
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
+/* No desktop o aparelho tem a altura da janela e a rolagem acontece DENTRO dele, como num celular:
+   a página em si não rola, o topo do app não some e a barra inferior fica colada na borda do aparelho. */
 @media (min-width: 600px) {
-  body { padding: 24px 0; }
-  .celular { min-height: calc(100vh - 48px); border-radius: 28px; box-shadow: 0 0 0 10px var(--tinta), 0 24px 60px rgb(0 0 0 / 0.25); overflow: clip; }
+  body { padding: 24px 0; height: 100vh; height: 100dvh; overflow: hidden; }
+  .celular {
+    height: calc(100vh - 48px); height: calc(100dvh - 48px); min-height: 0;
+    border-radius: 28px; box-shadow: 0 0 0 10px var(--tinta), 0 24px 60px rgb(0 0 0 / 0.25);
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 0;
+  }
 }
 .conteudo { flex: 1; width: 100%; padding: 1.5rem 16px 2rem; }
 .rodape { font-size: 0.8125rem; color: var(--grafite); margin-top: 2.5rem; }
@@ -371,7 +377,8 @@ th { font-weight: 700; color: var(--grafite); }
 .barra-inferior button.ativa { color: var(--tinta); font-weight: 700; }
 .barra-inferior button.ativa svg { stroke-width: 2.4; }
 @media (min-width: 600px) {
-  .barra-inferior { bottom: 24px; border-radius: 0 0 28px 28px; }
+  /* Presa ao fundo do aparelho (o contêiner que rola), não ao da janela */
+  .barra-inferior { position: sticky; bottom: 0; left: auto; transform: none; margin-top: auto; flex: none; }
 }
 
 .aviso-flutuante {
@@ -388,3 +395,61 @@ th { font-weight: 700; color: var(--grafite); }
 .referencia-br { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; }
 .referencia-br li { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: baseline; }
 .referencia-br li .medidor { grid-column: 1 / -1; }
+
+/* ===== Usuários: login, cadastro e administração (D40) ===== */
+.celular.sem-barra { padding-bottom: 0; }
+.entrar-topo {
+  display: flex; flex-direction: column; align-items: center; gap: 0.35rem; text-align: center;
+  padding: calc(40px + env(safe-area-inset-top)) 16px 32px; background: var(--marca); color: var(--marca-texto);
+}
+.entrar-topo .avatar { width: 56px; height: 56px; font-size: 1.5rem; margin-bottom: 0.25rem; }
+
+.abas { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 1.5rem; border-radius: 12px; background: var(--realce); }
+.abas button { min-height: 44px; border: 0; border-radius: 9px; background: none; cursor: pointer; font-weight: 700; color: var(--grafite); }
+.abas button.ativa { background: var(--superficie); color: var(--tinta); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
+
+.formulario { display: grid; gap: 1.1rem; margin-bottom: 2rem; }
+.formulario .erro { margin: 0; }
+.formulario > .botao { width: 100%; margin-top: 0.25rem; }
+.campo { display: grid; gap: 0.35rem; min-width: 0; border: 0; padding: 0; margin: 0; }
+.campo label, .campo-rotulo { font-weight: 700; padding: 0; }
+.campo input[type="text"], .campo input[type="email"], .campo input[type="password"], .campo input[type="search"] {
+  width: 100%; min-height: 48px; padding: 0.6rem 0.85rem; font: inherit; font-size: 1rem; color: var(--tinta);
+  background: var(--superficie); border: 1.5px solid var(--linha-forte); border-radius: 8px;
+}
+.campo input:focus-visible { outline: 3px solid var(--tinta); outline-offset: 1px; }
+.campo.com-erro input { border-color: var(--erro); }
+.campo-erro { margin: 0; color: var(--erro); font-size: 0.875rem; }
+.campo-ajuda { margin: 0; color: var(--grafite); font-size: 0.875rem; }
+.campo-fixo { margin: 0; min-height: 48px; display: flex; align-items: center; padding: 0 0.85rem; border-radius: 8px; background: var(--realce); font-variant-numeric: tabular-nums; }
+.campo-senha { position: relative; }
+.campo-senha input { padding-right: 5.5rem !important; }
+.campo-senha .link { position: absolute; right: 0.85rem; top: 50%; transform: translateY(-50%); font-size: 0.875rem; }
+.campo .opcoes { margin-top: 0.25rem; }
+
+.tela-conta .conteudo { display: grid; gap: 14px; align-content: start; }
+.tela-conta .ficha { margin: 0.5rem 0 0; }
+.botao.sair { width: 100%; margin-top: 0.5rem; }
+
+.sucesso { background: var(--realce); border-left: 4px solid var(--tinta); padding: 0.75rem 1rem; margin: 0 0 1rem; }
+.filtros { display: grid; gap: 0.75rem; margin-bottom: 1.25rem; }
+.marcar { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+.marcar input { width: 20px; height: 20px; accent-color: var(--tinta); }
+.lista-usuarios { list-style: none; padding: 0; display: grid; gap: 10px; }
+.lista-usuarios .cartao-bloco p { margin: 0.25rem 0 0; overflow-wrap: anywhere; }
+.lista-usuarios .excluido { border-style: dashed; background: transparent; }
+.lista-usuarios .excluido strong { color: var(--grafite); }
+.usuario-cabeca { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 0.75rem; }
+.selos { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+.selo { padding: 0.1rem 0.55rem; border-radius: 999px; background: var(--tinta); color: var(--papel); font-size: 0.75rem; font-weight: 700; }
+.selo.claro { background: var(--realce); color: var(--tinta); }
+.selo.alerta { background: var(--erro-fundo); color: var(--erro); }
+.usuario-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.75rem; }
+.usuario-acoes .botao { min-height: 40px; padding: 0.4rem 1rem; }
+.botao.perigo { background: var(--erro); border-color: var(--erro); color: var(--superficie); }
+.botao.perigo:hover { background: var(--erro); opacity: 0.9; }
+.menu-conta { display: grid; gap: 0; padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.menu-conta .bloco-cabeca { min-height: 52px; padding: 0; border-bottom: 1px solid var(--linha); }
+.menu-conta .bloco-cabeca:last-child { border-bottom: 0; }
+.confirmar-apagar { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.confirmar-apagar p { flex-basis: 100%; color: var(--erro); }

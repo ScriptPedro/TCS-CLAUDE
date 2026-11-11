@@ -20,6 +20,9 @@ const TRACOS = {
   mercado: "M3 4h2l2.4 11.2a1 1 0 001 .8h9.2a1 1 0 001-.8L20 8H6.2 M9 20.5a.5.5 0 100-1 .5.5 0 000 1z M18 20.5a.5.5 0 100-1 .5.5 0 000 1z",
   entrada: "M17 7L7 17 M17 17H7V7",
   saida: "M7 17L17 7 M7 7h10v10",
+  usuario: "M12 12a4 4 0 100-8 4 4 0 000 8z M4 21a8 8 0 0116 0",
+  cadeado: "M5 11h14v10H5z M8 11V7a4 4 0 018 0v4",
+  pessoas: "M9 11a4 4 0 100-8 4 4 0 000 8z M2 21a7 7 0 0114 0 M16 3.1a4 4 0 010 7.8 M18 14.2a7 7 0 014 6.8",
 } as const;
 
 export type NomeIcone = keyof typeof TRACOS;

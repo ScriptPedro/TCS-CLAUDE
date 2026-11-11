@@ -24,9 +24,11 @@ ipykernel==6.29.5
 streamlit==1.39.0
 fastapi==0.115.4    # API do front React (api/main.py)
 uvicorn==0.32.0
+psycopg[binary]==3.2.3   # PostgreSQL dos usuários (api/banco.py, D41)
 
 # Dados externos e testes
 openpyxl==3.1.5     # leitura dos microdados do Raio X (ANBIMA, .xlsx)
 kaggle==1.6.17
 pytest==8.3.3
+pytest-postgresql==6.1.1   # sobe um PostgreSQL temporário nos testes de usuários
 httpx==0.27.2       # TestClient do FastAPI

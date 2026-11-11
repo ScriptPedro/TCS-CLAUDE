@@ -87,3 +87,57 @@ export interface ReferenciaBR {
   /** Frases prontas (podem ter **negrito**): o que o grupo faz × o que o perfil pede. */
   linhas: string[];
 }
+
+// Usuários (api/usuarios.py, D40)
+export type Papel = "usuario" | "admin";
+
+export interface Usuario {
+  id: number;
+  nome: string;
+  /** Completo (000.000.000-00) para o próprio usuário e na ficha; mascarado (***.000.000-**) na lista. */
+  cpf: string;
+  email: string;
+  idade: number;
+  papel: Papel;
+  criado_em: string;
+  atualizado_em: string;
+  excluido_em: string | null;
+}
+
+/** Limites dos campos, vindos do servidor (src/config.py) para não duplicar regra aqui. */
+export interface Regras {
+  idade_minima: number;
+  idade_maxima: number;
+  nome_max: number;
+  senha_min: number;
+  senha_max: number;
+  papeis: Papel[];
+}
+
+export interface Sessao {
+  token: string;
+  usuario: Usuario;
+}
+
+export interface DadosUsuario {
+  nome: string;
+  cpf?: string;
+  email: string;
+  idade: string;
+  senha: string;
+  papel?: Papel;
+}
+
+export interface MeusDados {
+  nome: string;
+  email: string;
+  idade: string;
+}
+
+export interface RecomendacaoSalva {
+  id: number;
+  criada_em: string;
+  perfil: string;
+  respostas: Respostas;
+  resultado: Resultado;
+}

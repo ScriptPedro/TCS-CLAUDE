@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definicoes_cadastro" targetNamespace="https://github.com/ScriptPedro/TCS-CLAUDE/docs/bpmn" exporter="Assessor de Investimentos Virtual" exporterVersion="1.0">
+  <bpmn:collaboration id="Colaboracao_cadastro">
+    <bpmn:participant id="Participante_cadastro" name="Criar conta (cadastro público)" processRef="Processo_cadastro" />
+  </bpmn:collaboration>
+  <bpmn:process id="Processo_cadastro" name="01 — Criar conta" isExecutable="false">
+    <bpmn:documentation>Cadastro pela tela de entrada. Sempre cria o tipo 'usuário'; o primeiro administrador nasce pela linha de comando.</bpmn:documentation>
+    <bpmn:laneSet id="Raias_cadastro">
+      <bpmn:lane id="Raia_cadastro_0" name="Pessoa">
+        <bpmn:flowNodeRef>ini</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>preenche</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_cadastro_1" name="Aplicativo (front React)">
+        <bpmn:flowNodeRef>filtra</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>senhas</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>erro_campos</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>erro_existe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim_erro</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>home</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_cadastro_2" name="API (FastAPI) + PostgreSQL">
+        <bpmn:flowNodeRef>valida</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>validos</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>unicos</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>existe</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>cria</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sessao</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="ini" name="Quer criar uma conta">
+      <bpmn:outgoing>Seta_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="preenche" name="Preenche nome, CPF, e-mail, idade e senha (2x)">
+      <bpmn:incoming>Seta_1</bpmn:incoming>
+      <bpmn:incoming>Seta_4</bpmn:incoming>
+      <bpmn:incoming>Seta_8</bpmn:incoming>
+      <bpmn:outgoing>Seta_2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:scriptTask id="filtra" name="Filtra a digitação (máscara do CPF, idade só com algarismos)">
+      <bpmn:documentation>O front só filtra: máscara 000.000.000-00, idade só com algarismos e até 122, nome sem números nem símbolos. A regra vale no servidor.</bpmn:documentation>
+      <bpmn:incoming>Seta_2</bpmn:incoming>
+      <bpmn:outgoing>Seta_3</bpmn:outgoing>
+    </bpmn:scriptTask>
+    <bpmn:exclusiveGateway id="senhas" name="Senhas iguais?">
+      <bpmn:incoming>Seta_3</bpmn:incoming>
+      <bpmn:outgoing>Seta_4</bpmn:outgoing>
+      <bpmn:outgoing>Seta_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="valida" name="Valida os campos (POST /api/auth/registro)">
+      <bpmn:documentation>CPF com dígitos verificadores; nome e sobrenome só com letras; idade inteira de 18 a 122; e-mail; senha de 8+ caracteres com letras e números.</bpmn:documentation>
+      <bpmn:incoming>Seta_5</bpmn:incoming>
+      <bpmn:outgoing>Seta_6</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="validos" name="Campos válidos?">
+      <bpmn:incoming>Seta_6</bpmn:incoming>
+      <bpmn:outgoing>Seta_7</bpmn:outgoing>
+      <bpmn:outgoing>Seta_9</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="erro_campos" name="Mostra a mensagem embaixo de cada campo">
+      <bpmn:incoming>Seta_7</bpmn:incoming>
+      <bpmn:outgoing>Seta_8</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="unicos" name="Confere CPF e e-mail únicos (inclusive excluídos)">
+      <bpmn:incoming>Seta_9</bpmn:incoming>
+      <bpmn:outgoing>Seta_10</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="existe" name="Já existe?">
+      <bpmn:incoming>Seta_10</bpmn:incoming>
+      <bpmn:outgoing>Seta_11</bpmn:outgoing>
+      <bpmn:outgoing>Seta_13</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="erro_existe" name="Mostra 'já existe' ou 'peça a reativação'">
+      <bpmn:incoming>Seta_11</bpmn:incoming>
+      <bpmn:outgoing>Seta_12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim_erro" name="Cadastro não concluído">
+      <bpmn:incoming>Seta_12</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="cria" name="Cria o usuário (tipo 'usuário', senha em hash scrypt)">
+      <bpmn:incoming>Seta_13</bpmn:incoming>
+      <bpmn:outgoing>Seta_14</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="Assoc_cadastro_0"><bpmn:targetRef>bd</bpmn:targetRef></bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="sessao" name="Abre a sessão (token de 8 h; o banco guarda o hash)">
+      <bpmn:incoming>Seta_14</bpmn:incoming>
+      <bpmn:outgoing>Seta_15</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="Assoc_cadastro_1"><bpmn:targetRef>bd</bpmn:targetRef></bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:dataStoreReference id="bd" name="PostgreSQL: usuarios, sessoes" />
+    <bpmn:task id="home" name="Guarda o token e abre a home do banco">
+      <bpmn:incoming>Seta_15</bpmn:incoming>
+      <bpmn:outgoing>Seta_16</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim" name="Conta criada e logada">
+      <bpmn:incoming>Seta_16</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Seta_1" sourceRef="ini" targetRef="preenche" />
+    <bpmn:sequenceFlow id="Seta_2" sourceRef="preenche" targetRef="filtra" />
+    <bpmn:sequenceFlow id="Seta_3" sourceRef="filtra" targetRef="senhas" />
+    <bpmn:sequenceFlow id="Seta_4" name="não" sourceRef="senhas" targetRef="preenche" />
+    <bpmn:sequenceFlow id="Seta_5" name="sim" sourceRef="senhas" targetRef="valida" />
+    <bpmn:sequenceFlow id="Seta_6" sourceRef="valida" targetRef="validos" />
+    <bpmn:sequenceFlow id="Seta_7" name="não" sourceRef="validos" targetRef="erro_campos" />
+    <bpmn:sequenceFlow id="Seta_8" sourceRef="erro_campos" targetRef="preenche" />
+    <bpmn:sequenceFlow id="Seta_9" name="sim" sourceRef="validos" targetRef="unicos" />
+    <bpmn:sequenceFlow id="Seta_10" sourceRef="unicos" targetRef="existe" />
+    <bpmn:sequenceFlow id="Seta_11" name="sim" sourceRef="existe" targetRef="erro_existe" />
+    <bpmn:sequenceFlow id="Seta_12" sourceRef="erro_existe" targetRef="fim_erro" />
+    <bpmn:sequenceFlow id="Seta_13" name="não" sourceRef="existe" targetRef="cria" />
+    <bpmn:sequenceFlow id="Seta_14" sourceRef="cria" targetRef="sessao" />
+    <bpmn:sequenceFlow id="Seta_15" sourceRef="sessao" targetRef="home" />
+    <bpmn:sequenceFlow id="Seta_16" sourceRef="home" targetRef="fim" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagrama_cadastro">
+    <bpmndi:BPMNPlane id="Plano_cadastro" bpmnElement="Colaboracao_cadastro">
+      <bpmndi:BPMNShape id="Participante_cadastro_di" bpmnElement="Participante_cadastro" isHorizontal="true">
+        <dc:Bounds x="120" y="40" width="2425" height="630" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_cadastro_0_di" bpmnElement="Raia_cadastro_0" isHorizontal="true">
+        <dc:Bounds x="150" y="40" width="2395" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_cadastro_1_di" bpmnElement="Raia_cadastro_1" isHorizontal="true">
+        <dc:Bounds x="150" y="210" width="2395" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_cadastro_2_di" bpmnElement="Raia_cadastro_2" isHorizontal="true">
+        <dc:Bounds x="150" y="400" width="2395" height="270" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ini_di" bpmnElement="ini">
+        <dc:Bounds x="267" y="107" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="230" y="149" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="preenche_di" bpmnElement="preenche">
+        <dc:Bounds x="405" y="82" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="filtra_di" bpmnElement="filtra">
+        <dc:Bounds x="600" y="262" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="senhas_di" bpmnElement="senhas" isMarkerVisible="true">
+        <dc:Bounds x="845" y="280" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="743" y="256" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="valida_di" bpmnElement="valida">
+        <dc:Bounds x="990" y="462" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="validos_di" bpmnElement="validos" isMarkerVisible="true">
+        <dc:Bounds x="1235" y="480" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1133" y="456" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="erro_campos_di" bpmnElement="erro_campos">
+        <dc:Bounds x="1185" y="262" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="unicos_di" bpmnElement="unicos">
+        <dc:Bounds x="1380" y="462" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="existe_di" bpmnElement="existe" isMarkerVisible="true">
+        <dc:Bounds x="1625" y="480" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1523" y="456" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="erro_existe_di" bpmnElement="erro_existe">
+        <dc:Bounds x="1575" y="262" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_erro_di" bpmnElement="fim_erro">
+        <dc:Bounds x="1827" y="287" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1790" y="329" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="cria_di" bpmnElement="cria">
+        <dc:Bounds x="1770" y="462" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sessao_di" bpmnElement="sessao">
+        <dc:Bounds x="1965" y="462" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bd_di" bpmnElement="bd">
+        <dc:Bounds x="1918" y="580" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1888" y="636" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="home_di" bpmnElement="home">
+        <dc:Bounds x="2160" y="262" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_di" bpmnElement="fim">
+        <dc:Bounds x="2412" y="287" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2375" y="329" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Seta_1_di" bpmnElement="Seta_1">
+        <di:waypoint x="303" y="125" />
+        <di:waypoint x="405" y="125" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_2_di" bpmnElement="Seta_2">
+        <di:waypoint x="555" y="125" />
+        <di:waypoint x="575" y="125" />
+        <di:waypoint x="575" y="305" />
+        <di:waypoint x="600" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_3_di" bpmnElement="Seta_3">
+        <di:waypoint x="750" y="305" />
+        <di:waypoint x="845" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_4_di" bpmnElement="Seta_4">
+        <di:waypoint x="870" y="280" />
+        <di:waypoint x="870" y="188" />
+        <di:waypoint x="480" y="188" />
+        <di:waypoint x="480" y="168" />
+        <bpmndi:BPMNLabel><dc:Bounds x="876" y="258" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_5_di" bpmnElement="Seta_5">
+        <di:waypoint x="895" y="305" />
+        <di:waypoint x="965" y="305" />
+        <di:waypoint x="965" y="505" />
+        <di:waypoint x="990" y="505" />
+        <bpmndi:BPMNLabel><dc:Bounds x="903" y="285" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_6_di" bpmnElement="Seta_6">
+        <di:waypoint x="1140" y="505" />
+        <di:waypoint x="1235" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_7_di" bpmnElement="Seta_7">
+        <di:waypoint x="1260" y="480" />
+        <di:waypoint x="1260" y="348" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1266" y="458" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_8_di" bpmnElement="Seta_8">
+        <di:waypoint x="1260" y="262" />
+        <di:waypoint x="1260" y="188" />
+        <di:waypoint x="480" y="188" />
+        <di:waypoint x="480" y="168" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_9_di" bpmnElement="Seta_9">
+        <di:waypoint x="1285" y="505" />
+        <di:waypoint x="1380" y="505" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1293" y="485" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_10_di" bpmnElement="Seta_10">
+        <di:waypoint x="1530" y="505" />
+        <di:waypoint x="1625" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_11_di" bpmnElement="Seta_11">
+        <di:waypoint x="1650" y="480" />
+        <di:waypoint x="1650" y="348" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1656" y="458" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_12_di" bpmnElement="Seta_12">
+        <di:waypoint x="1725" y="305" />
+        <di:waypoint x="1827" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_13_di" bpmnElement="Seta_13">
+        <di:waypoint x="1675" y="505" />
+        <di:waypoint x="1770" y="505" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1683" y="485" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_14_di" bpmnElement="Seta_14">
+        <di:waypoint x="1920" y="505" />
+        <di:waypoint x="1965" y="505" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_15_di" bpmnElement="Seta_15">
+        <di:waypoint x="2115" y="505" />
+        <di:waypoint x="2135" y="505" />
+        <di:waypoint x="2135" y="305" />
+        <di:waypoint x="2160" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_16_di" bpmnElement="Seta_16">
+        <di:waypoint x="2310" y="305" />
+        <di:waypoint x="2412" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_cadastro_0_di" bpmnElement="Assoc_cadastro_0">
+        <di:waypoint x="1845" y="548" />
+        <di:waypoint x="1942" y="580" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_cadastro_1_di" bpmnElement="Assoc_cadastro_1">
+        <di:waypoint x="2040" y="548" />
+        <di:waypoint x="1942" y="580" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

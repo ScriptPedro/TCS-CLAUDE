@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definicoes_gestao_exclusao" targetNamespace="https://github.com/ScriptPedro/TCS-CLAUDE/docs/bpmn" exporter="Assessor de Investimentos Virtual" exporterVersion="1.0">
+  <bpmn:collaboration id="Colaboracao_gestao_exclusao">
+    <bpmn:participant id="Participante_gestao_exclusao" name="Gerenciar usuários (só administradores)" processRef="Processo_gestao_exclusao" />
+  </bpmn:collaboration>
+  <bpmn:process id="Processo_gestao_exclusao" name="06 — Gerenciar usuários: excluir, restaurar e apagar (LGPD)" isExecutable="false">
+    <bpmn:documentation>Exclusão comum é soft delete (excluido_em): a conta some da lista, não entra e pode ser restaurada. Apagar definitivamente (LGPD, art. 18, VI) só vale para contas já excluídas.</bpmn:documentation>
+    <bpmn:laneSet id="Raias_gestao_exclusao">
+      <bpmn:lane id="Raia_gestao_exclusao_0" name="Administrador">
+        <bpmn:flowNodeRef>ini</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>acao</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>conf_exc</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>conf_lgpd</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_gestao_exclusao_1" name="Aplicativo (front React)">
+        <bpmn:flowNodeRef>erro_propria</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim_propria</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>erro_lgpd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim_lgpd</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>atualiza</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_gestao_exclusao_2" name="API (FastAPI) + PostgreSQL">
+        <bpmn:flowNodeRef>propria</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>soft</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>restaura</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ja_excluida</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>apaga</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>junta</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="ini" name="Escolhe uma conta na lista">
+      <bpmn:outgoing>Seta_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="acao" name="Ação?">
+      <bpmn:incoming>Seta_1</bpmn:incoming>
+      <bpmn:outgoing>Seta_2</bpmn:outgoing>
+      <bpmn:outgoing>Seta_3</bpmn:outgoing>
+      <bpmn:outgoing>Seta_4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="conf_exc" name="Confirma a exclusão">
+      <bpmn:incoming>Seta_2</bpmn:incoming>
+      <bpmn:outgoing>Seta_5</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="propria" name="É a própria conta?">
+      <bpmn:incoming>Seta_5</bpmn:incoming>
+      <bpmn:outgoing>Seta_6</bpmn:outgoing>
+      <bpmn:outgoing>Seta_8</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="erro_propria" name="Mostra 'não pode excluir a própria conta'">
+      <bpmn:incoming>Seta_6</bpmn:incoming>
+      <bpmn:outgoing>Seta_7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim_propria" name="Exclusão recusada">
+      <bpmn:incoming>Seta_7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="soft" name="Soft delete: marca excluido_em e encerra as sessões">
+      <bpmn:incoming>Seta_8</bpmn:incoming>
+      <bpmn:outgoing>Seta_9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="restaura" name="Restaura: limpa excluido_em">
+      <bpmn:incoming>Seta_3</bpmn:incoming>
+      <bpmn:outgoing>Seta_10</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:userTask id="conf_lgpd" name="Confirma (irreversível)">
+      <bpmn:incoming>Seta_4</bpmn:incoming>
+      <bpmn:outgoing>Seta_11</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="ja_excluida" name="Já está excluída?">
+      <bpmn:incoming>Seta_11</bpmn:incoming>
+      <bpmn:outgoing>Seta_12</bpmn:outgoing>
+      <bpmn:outgoing>Seta_14</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="erro_lgpd" name="Mostra 'exclua a conta primeiro'">
+      <bpmn:incoming>Seta_12</bpmn:incoming>
+      <bpmn:outgoing>Seta_13</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim_lgpd" name="Pedido recusado">
+      <bpmn:incoming>Seta_13</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="apaga" name="Apaga conta, sessões, recomendações e tentativas">
+      <bpmn:incoming>Seta_14</bpmn:incoming>
+      <bpmn:outgoing>Seta_15</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="junta" name="">
+      <bpmn:incoming>Seta_9</bpmn:incoming>
+      <bpmn:incoming>Seta_10</bpmn:incoming>
+      <bpmn:incoming>Seta_15</bpmn:incoming>
+      <bpmn:outgoing>Seta_16</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="atualiza" name="Mostra o aviso e a lista atualizada">
+      <bpmn:incoming>Seta_16</bpmn:incoming>
+      <bpmn:outgoing>Seta_17</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim" name="Conta excluída, restaurada ou apagada">
+      <bpmn:incoming>Seta_17</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Seta_1" sourceRef="ini" targetRef="acao" />
+    <bpmn:sequenceFlow id="Seta_2" name="excluir" sourceRef="acao" targetRef="conf_exc" />
+    <bpmn:sequenceFlow id="Seta_3" name="restaurar" sourceRef="acao" targetRef="restaura" />
+    <bpmn:sequenceFlow id="Seta_4" name="apagar de vez" sourceRef="acao" targetRef="conf_lgpd" />
+    <bpmn:sequenceFlow id="Seta_5" sourceRef="conf_exc" targetRef="propria" />
+    <bpmn:sequenceFlow id="Seta_6" name="sim" sourceRef="propria" targetRef="erro_propria" />
+    <bpmn:sequenceFlow id="Seta_7" sourceRef="erro_propria" targetRef="fim_propria" />
+    <bpmn:sequenceFlow id="Seta_8" name="não" sourceRef="propria" targetRef="soft" />
+    <bpmn:sequenceFlow id="Seta_9" sourceRef="soft" targetRef="junta" />
+    <bpmn:sequenceFlow id="Seta_10" sourceRef="restaura" targetRef="junta" />
+    <bpmn:sequenceFlow id="Seta_11" sourceRef="conf_lgpd" targetRef="ja_excluida" />
+    <bpmn:sequenceFlow id="Seta_12" name="não" sourceRef="ja_excluida" targetRef="erro_lgpd" />
+    <bpmn:sequenceFlow id="Seta_13" sourceRef="erro_lgpd" targetRef="fim_lgpd" />
+    <bpmn:sequenceFlow id="Seta_14" name="sim" sourceRef="ja_excluida" targetRef="apaga" />
+    <bpmn:sequenceFlow id="Seta_15" sourceRef="apaga" targetRef="junta" />
+    <bpmn:sequenceFlow id="Seta_16" sourceRef="junta" targetRef="atualiza" />
+    <bpmn:sequenceFlow id="Seta_17" sourceRef="atualiza" targetRef="fim" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagrama_gestao_exclusao">
+    <bpmndi:BPMNPlane id="Plano_gestao_exclusao" bpmnElement="Colaboracao_gestao_exclusao">
+      <bpmndi:BPMNShape id="Participante_gestao_exclusao_di" bpmnElement="Participante_gestao_exclusao" isHorizontal="true">
+        <dc:Bounds x="120" y="40" width="2035" height="1050" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_gestao_exclusao_0_di" bpmnElement="Raia_gestao_exclusao_0" isHorizontal="true">
+        <dc:Bounds x="150" y="40" width="2005" height="350" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_gestao_exclusao_1_di" bpmnElement="Raia_gestao_exclusao_1" isHorizontal="true">
+        <dc:Bounds x="150" y="390" width="2005" height="350" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_gestao_exclusao_2_di" bpmnElement="Raia_gestao_exclusao_2" isHorizontal="true">
+        <dc:Bounds x="150" y="740" width="2005" height="350" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ini_di" bpmnElement="ini">
+        <dc:Bounds x="267" y="197" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="230" y="239" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="acao_di" bpmnElement="acao" isMarkerVisible="true">
+        <dc:Bounds x="455" y="190" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="353" y="166" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="conf_exc_di" bpmnElement="conf_exc">
+        <dc:Bounds x="600" y="62" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="propria_di" bpmnElement="propria" isMarkerVisible="true">
+        <dc:Bounds x="845" y="780" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="743" y="756" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="erro_propria_di" bpmnElement="erro_propria">
+        <dc:Bounds x="990" y="412" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_propria_di" bpmnElement="fim_propria">
+        <dc:Bounds x="1242" y="437" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1205" y="479" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="soft_di" bpmnElement="soft">
+        <dc:Bounds x="1185" y="762" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="restaura_di" bpmnElement="restaura">
+        <dc:Bounds x="795" y="872" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="conf_lgpd_di" bpmnElement="conf_lgpd">
+        <dc:Bounds x="600" y="282" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ja_excluida_di" bpmnElement="ja_excluida" isMarkerVisible="true">
+        <dc:Bounds x="1040" y="1000" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="938" y="976" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="erro_lgpd_di" bpmnElement="erro_lgpd">
+        <dc:Bounds x="1185" y="632" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_lgpd_di" bpmnElement="fim_lgpd">
+        <dc:Bounds x="1437" y="657" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1400" y="699" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="apaga_di" bpmnElement="apaga">
+        <dc:Bounds x="1380" y="982" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="junta_di" bpmnElement="junta" isMarkerVisible="true">
+        <dc:Bounds x="1625" y="890" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1523" y="866" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="atualiza_di" bpmnElement="atualiza">
+        <dc:Bounds x="1770" y="522" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_di" bpmnElement="fim">
+        <dc:Bounds x="2022" y="547" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1985" y="589" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Seta_1_di" bpmnElement="Seta_1">
+        <di:waypoint x="303" y="215" />
+        <di:waypoint x="455" y="215" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_2_di" bpmnElement="Seta_2">
+        <di:waypoint x="480" y="190" />
+        <di:waypoint x="480" y="105" />
+        <di:waypoint x="600" y="105" />
+        <bpmndi:BPMNLabel><dc:Bounds x="488" y="85" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_3_di" bpmnElement="Seta_3">
+        <di:waypoint x="480" y="240" />
+        <di:waypoint x="480" y="915" />
+        <di:waypoint x="795" y="915" />
+        <bpmndi:BPMNLabel><dc:Bounds x="488" y="895" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_4_di" bpmnElement="Seta_4">
+        <di:waypoint x="480" y="240" />
+        <di:waypoint x="480" y="325" />
+        <di:waypoint x="600" y="325" />
+        <bpmndi:BPMNLabel><dc:Bounds x="488" y="305" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_5_di" bpmnElement="Seta_5">
+        <di:waypoint x="750" y="105" />
+        <di:waypoint x="820" y="105" />
+        <di:waypoint x="820" y="805" />
+        <di:waypoint x="845" y="805" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_6_di" bpmnElement="Seta_6">
+        <di:waypoint x="870" y="780" />
+        <di:waypoint x="870" y="455" />
+        <di:waypoint x="990" y="455" />
+        <bpmndi:BPMNLabel><dc:Bounds x="878" y="435" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_7_di" bpmnElement="Seta_7">
+        <di:waypoint x="1140" y="455" />
+        <di:waypoint x="1242" y="455" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_8_di" bpmnElement="Seta_8">
+        <di:waypoint x="895" y="805" />
+        <di:waypoint x="1185" y="805" />
+        <bpmndi:BPMNLabel><dc:Bounds x="903" y="785" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_9_di" bpmnElement="Seta_9">
+        <di:waypoint x="1335" y="805" />
+        <di:waypoint x="1650" y="805" />
+        <di:waypoint x="1650" y="890" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_10_di" bpmnElement="Seta_10">
+        <di:waypoint x="945" y="915" />
+        <di:waypoint x="1625" y="915" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_11_di" bpmnElement="Seta_11">
+        <di:waypoint x="675" y="368" />
+        <di:waypoint x="675" y="1025" />
+        <di:waypoint x="1040" y="1025" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_12_di" bpmnElement="Seta_12">
+        <di:waypoint x="1065" y="1000" />
+        <di:waypoint x="1065" y="675" />
+        <di:waypoint x="1185" y="675" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1073" y="655" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_13_di" bpmnElement="Seta_13">
+        <di:waypoint x="1335" y="675" />
+        <di:waypoint x="1437" y="675" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_14_di" bpmnElement="Seta_14">
+        <di:waypoint x="1090" y="1025" />
+        <di:waypoint x="1380" y="1025" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1098" y="1005" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_15_di" bpmnElement="Seta_15">
+        <di:waypoint x="1530" y="1025" />
+        <di:waypoint x="1650" y="1025" />
+        <di:waypoint x="1650" y="940" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_16_di" bpmnElement="Seta_16">
+        <di:waypoint x="1675" y="915" />
+        <di:waypoint x="1745" y="915" />
+        <di:waypoint x="1745" y="565" />
+        <di:waypoint x="1770" y="565" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_17_di" bpmnElement="Seta_17">
+        <di:waypoint x="1920" y="565" />
+        <di:waypoint x="2022" y="565" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

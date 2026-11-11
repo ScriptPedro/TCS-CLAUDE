@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definicoes_login" targetNamespace="https://github.com/ScriptPedro/TCS-CLAUDE/docs/bpmn" exporter="Assessor de Investimentos Virtual" exporterVersion="1.0">
+  <bpmn:collaboration id="Colaboracao_login">
+    <bpmn:participant id="Participante_login" name="Entrar no app" processRef="Processo_login" />
+  </bpmn:collaboration>
+  <bpmn:process id="Processo_login" name="02 — Entrar (login)" isExecutable="false">
+    <bpmn:documentation>Login por e-mail ou CPF. Errar a senha 5 vezes em 15 minutos bloqueia a conta por 15 minutos.</bpmn:documentation>
+    <bpmn:laneSet id="Raias_login">
+      <bpmn:lane id="Raia_login_0" name="Pessoa">
+        <bpmn:flowNodeRef>informa</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_login_1" name="Aplicativo (front React)">
+        <bpmn:flowNodeRef>ini</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>tem_sessao</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>aviso_bloq</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim_bloq</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>erro_senha</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>guarda</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_login_2" name="API (FastAPI) + PostgreSQL">
+        <bpmn:flowNodeRef>bloqueio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>bloqueado</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>senha</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>certa</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>falha</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>abre</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="ini" name="Abre o app">
+      <bpmn:outgoing>Seta_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="tem_sessao" name="Há sessão válida salva?">
+      <bpmn:incoming>Seta_1</bpmn:incoming>
+      <bpmn:outgoing>Seta_2</bpmn:outgoing>
+      <bpmn:outgoing>Seta_3</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="informa" name="Informa e-mail ou CPF e a senha">
+      <bpmn:incoming>Seta_2</bpmn:incoming>
+      <bpmn:incoming>Seta_12</bpmn:incoming>
+      <bpmn:outgoing>Seta_4</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="bloqueio" name="Confere o bloqueio (5 erros em 15 min)">
+      <bpmn:incoming>Seta_4</bpmn:incoming>
+      <bpmn:outgoing>Seta_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="bloqueado" name="Bloqueado?">
+      <bpmn:incoming>Seta_5</bpmn:incoming>
+      <bpmn:outgoing>Seta_6</bpmn:outgoing>
+      <bpmn:outgoing>Seta_8</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="aviso_bloq" name="Avisa quantos minutos faltam">
+      <bpmn:incoming>Seta_6</bpmn:incoming>
+      <bpmn:outgoing>Seta_7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim_bloq" name="Acesso negado por ora">
+      <bpmn:incoming>Seta_7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="senha" name="Confere a senha (conta excluída não entra)">
+      <bpmn:incoming>Seta_8</bpmn:incoming>
+      <bpmn:outgoing>Seta_9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="certa" name="Senha certa?">
+      <bpmn:incoming>Seta_9</bpmn:incoming>
+      <bpmn:outgoing>Seta_10</bpmn:outgoing>
+      <bpmn:outgoing>Seta_13</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="falha" name="Registra a falha (tentativas_login)">
+      <bpmn:incoming>Seta_10</bpmn:incoming>
+      <bpmn:outgoing>Seta_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="erro_senha" name="Mostra 'e-mail/CPF ou senha incorretos'">
+      <bpmn:incoming>Seta_11</bpmn:incoming>
+      <bpmn:outgoing>Seta_12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="abre" name="Zera as falhas e abre a sessão (8 h)">
+      <bpmn:incoming>Seta_13</bpmn:incoming>
+      <bpmn:outgoing>Seta_14</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="guarda" name="Guarda o token e busca a última carteira">
+      <bpmn:documentation>GET /api/recomendacoes/ultima: a carteira aparece em qualquer aparelho em que a pessoa entrar.</bpmn:documentation>
+      <bpmn:incoming>Seta_3</bpmn:incoming>
+      <bpmn:incoming>Seta_14</bpmn:incoming>
+      <bpmn:outgoing>Seta_15</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="fim" name="Home do banco com a carteira salva">
+      <bpmn:incoming>Seta_15</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Seta_1" sourceRef="ini" targetRef="tem_sessao" />
+    <bpmn:sequenceFlow id="Seta_2" name="não" sourceRef="tem_sessao" targetRef="informa" />
+    <bpmn:sequenceFlow id="Seta_3" name="sim" sourceRef="tem_sessao" targetRef="guarda" />
+    <bpmn:sequenceFlow id="Seta_4" sourceRef="informa" targetRef="bloqueio" />
+    <bpmn:sequenceFlow id="Seta_5" sourceRef="bloqueio" targetRef="bloqueado" />
+    <bpmn:sequenceFlow id="Seta_6" name="sim" sourceRef="bloqueado" targetRef="aviso_bloq" />
+    <bpmn:sequenceFlow id="Seta_7" sourceRef="aviso_bloq" targetRef="fim_bloq" />
+    <bpmn:sequenceFlow id="Seta_8" name="não" sourceRef="bloqueado" targetRef="senha" />
+    <bpmn:sequenceFlow id="Seta_9" sourceRef="senha" targetRef="certa" />
+    <bpmn:sequenceFlow id="Seta_10" name="não" sourceRef="certa" targetRef="falha" />
+    <bpmn:sequenceFlow id="Seta_11" sourceRef="falha" targetRef="erro_senha" />
+    <bpmn:sequenceFlow id="Seta_12" sourceRef="erro_senha" targetRef="informa" />
+    <bpmn:sequenceFlow id="Seta_13" name="sim" sourceRef="certa" targetRef="abre" />
+    <bpmn:sequenceFlow id="Seta_14" sourceRef="abre" targetRef="guarda" />
+    <bpmn:sequenceFlow id="Seta_15" sourceRef="guarda" targetRef="fim" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagrama_login">
+    <bpmndi:BPMNPlane id="Plano_login" bpmnElement="Colaboracao_login">
+      <bpmndi:BPMNShape id="Participante_login_di" bpmnElement="Participante_login" isHorizontal="true">
+        <dc:Bounds x="120" y="40" width="2230" height="660" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_login_0_di" bpmnElement="Raia_login_0" isHorizontal="true">
+        <dc:Bounds x="150" y="40" width="2200" height="170" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_login_1_di" bpmnElement="Raia_login_1" isHorizontal="true">
+        <dc:Bounds x="150" y="210" width="2200" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_login_2_di" bpmnElement="Raia_login_2" isHorizontal="true">
+        <dc:Bounds x="150" y="400" width="2200" height="300" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ini_di" bpmnElement="ini">
+        <dc:Bounds x="267" y="287" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="230" y="329" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="tem_sessao_di" bpmnElement="tem_sessao" isMarkerVisible="true">
+        <dc:Bounds x="455" y="280" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="353" y="256" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="informa_di" bpmnElement="informa">
+        <dc:Bounds x="600" y="82" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bloqueio_di" bpmnElement="bloqueio">
+        <dc:Bounds x="795" y="447" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bloqueado_di" bpmnElement="bloqueado" isMarkerVisible="true">
+        <dc:Bounds x="1040" y="465" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="938" y="441" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="aviso_bloq_di" bpmnElement="aviso_bloq">
+        <dc:Bounds x="990" y="262" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_bloq_di" bpmnElement="fim_bloq">
+        <dc:Bounds x="1242" y="287" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1205" y="329" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="senha_di" bpmnElement="senha">
+        <dc:Bounds x="1185" y="447" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="certa_di" bpmnElement="certa" isMarkerVisible="true">
+        <dc:Bounds x="1430" y="465" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1328" y="441" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="falha_di" bpmnElement="falha">
+        <dc:Bounds x="1380" y="577" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="erro_senha_di" bpmnElement="erro_senha">
+        <dc:Bounds x="1575" y="262" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="abre_di" bpmnElement="abre">
+        <dc:Bounds x="1770" y="447" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="guarda_di" bpmnElement="guarda">
+        <dc:Bounds x="1965" y="262" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_di" bpmnElement="fim">
+        <dc:Bounds x="2217" y="287" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2180" y="329" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Seta_1_di" bpmnElement="Seta_1">
+        <di:waypoint x="303" y="305" />
+        <di:waypoint x="455" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_2_di" bpmnElement="Seta_2">
+        <di:waypoint x="505" y="305" />
+        <di:waypoint x="575" y="305" />
+        <di:waypoint x="575" y="125" />
+        <di:waypoint x="600" y="125" />
+        <bpmndi:BPMNLabel><dc:Bounds x="513" y="285" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_3_di" bpmnElement="Seta_3">
+        <di:waypoint x="480" y="330" />
+        <di:waypoint x="480" y="393" />
+        <di:waypoint x="2040" y="393" />
+        <di:waypoint x="2040" y="348" />
+        <bpmndi:BPMNLabel><dc:Bounds x="486" y="334" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_4_di" bpmnElement="Seta_4">
+        <di:waypoint x="750" y="125" />
+        <di:waypoint x="770" y="125" />
+        <di:waypoint x="770" y="490" />
+        <di:waypoint x="795" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_5_di" bpmnElement="Seta_5">
+        <di:waypoint x="945" y="490" />
+        <di:waypoint x="1040" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_6_di" bpmnElement="Seta_6">
+        <di:waypoint x="1065" y="465" />
+        <di:waypoint x="1065" y="348" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1071" y="443" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_7_di" bpmnElement="Seta_7">
+        <di:waypoint x="1140" y="305" />
+        <di:waypoint x="1242" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_8_di" bpmnElement="Seta_8">
+        <di:waypoint x="1090" y="490" />
+        <di:waypoint x="1185" y="490" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1098" y="470" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_9_di" bpmnElement="Seta_9">
+        <di:waypoint x="1335" y="490" />
+        <di:waypoint x="1430" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_10_di" bpmnElement="Seta_10">
+        <di:waypoint x="1455" y="515" />
+        <di:waypoint x="1455" y="577" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1461" y="519" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_11_di" bpmnElement="Seta_11">
+        <di:waypoint x="1530" y="620" />
+        <di:waypoint x="1550" y="620" />
+        <di:waypoint x="1550" y="305" />
+        <di:waypoint x="1575" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_12_di" bpmnElement="Seta_12">
+        <di:waypoint x="1650" y="262" />
+        <di:waypoint x="1650" y="188" />
+        <di:waypoint x="675" y="188" />
+        <di:waypoint x="675" y="168" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_13_di" bpmnElement="Seta_13">
+        <di:waypoint x="1480" y="490" />
+        <di:waypoint x="1770" y="490" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1488" y="470" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_14_di" bpmnElement="Seta_14">
+        <di:waypoint x="1920" y="490" />
+        <di:waypoint x="1940" y="490" />
+        <di:waypoint x="1940" y="305" />
+        <di:waypoint x="1965" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_15_di" bpmnElement="Seta_15">
+        <di:waypoint x="2115" y="305" />
+        <di:waypoint x="2217" y="305" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

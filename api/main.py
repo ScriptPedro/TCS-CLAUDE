@@ -5,7 +5,9 @@ Expõe o mesmo fluxo do app Streamlit, sem duplicar lógica: as perguntas vêm d
 
     GET  /api/saude          → os modelos estão carregados?
     GET  /api/questionario   → etapas, perguntas, opções e respostas padrão
-    POST /api/recomendacao   → respostas do formulário → recomendação completa
+    POST /api/recomendacao   → respostas do formulário → recomendação completa (exige login; fica salva)
+    GET  /api/recomendacoes/ultima → última recomendação de quem está logado (ou null)
+    /api/auth/*, /api/usuarios → cadastro, login e gerenciamento de usuários (api/usuarios.py, D40)
 
 Uso (na raiz do projeto):
     uvicorn api.main:app --reload --port 8000
@@ -21,11 +23,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from api import banco
+from api.usuarios import conexao, usuario_logado
+from api.usuarios import roteador as roteador_usuarios
 from app import components as ui
 from src import config
 from src import portfolio as pf
@@ -38,6 +44,25 @@ ROOT = Path(__file__).resolve().parents[1]
 FRONT_DIST = ROOT / "frontend" / "dist"
 
 app = FastAPI(title="Assessor de Investimentos Virtual", version="1.0.0")
+app.include_router(roteador_usuarios)  # antes da rota coringa do front, no fim do arquivo
+
+
+@app.exception_handler(RequestValidationError)
+def formato_invalido(_: Request, exc: RequestValidationError) -> JSONResponse:
+    """Erros de formato (corpo que não é JSON/objeto, parâmetro de tipo errado) no mesmo formato
+    do resto da API e em português, para o front conseguir mostrá-los."""
+    campos = sorted({str(e["loc"][-1]) for e in exc.errors() if e.get("loc")} - {"body"})
+    detalhe = f" Confira: {', '.join(campos)}." if campos else ""
+    return JSONResponse(status_code=422, content={"detail": {
+        "erros": [f"A requisição veio num formato inválido.{detalhe}"], "campos": {},
+    }})
+
+
+@app.exception_handler(banco.BancoIndisponivel)
+def banco_indisponivel(_: Request, exc: banco.BancoIndisponivel) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": {"erros": [
+        "O banco de dados (PostgreSQL) não respondeu. Ele está no ar e ASSESSOR_DATABASE_URL está certo?"
+    ], "campos": {}}})
 
 
 def pasta_modelos() -> Path:
@@ -175,7 +200,9 @@ def serializar(res: Recomendacao, avisos: list[str]) -> dict[str, Any]:
 
 
 @app.post("/api/recomendacao")
-def recomendacao(body: Respostas) -> dict[str, Any]:
+def recomendacao(body: Respostas, usuario: dict[str, Any] = Depends(usuario_logado),
+                 con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
+    """Só para quem fez login (D40); cada resultado fica salvo e ligado a quem o pediu."""
     q, erros = ui.montar_questionario(body.respostas)
     if erros:
         raise HTTPException(status_code=422, detail={"erros": erros})
@@ -183,7 +210,18 @@ def recomendacao(body: Respostas) -> dict[str, Any]:
         artefatos = obter_artefatos()
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail={"erros": [f"Modelos não encontrados. {exc}"]}) from exc
-    return serializar(aconselhar(q, artefatos), ui.avisos_de_consistencia(q))
+    resultado = serializar(aconselhar(q, artefatos), ui.avisos_de_consistencia(q))
+    # Só as perguntas conhecidas vão para o banco: campos extras enviados junto são descartados
+    respostas = {campo: body.respostas[campo] for campo in ui.PERGUNTAS if campo in body.respostas}
+    banco.salvar_recomendacao(con, usuario["id"], resultado["perfil"]["efetivo"], respostas, resultado)
+    return resultado
+
+
+@app.get("/api/recomendacoes/ultima")
+def ultima_recomendacao(usuario: dict[str, Any] = Depends(usuario_logado),
+                        con: banco.Conexao = Depends(conexao)) -> dict[str, Any] | None:
+    """Ao entrar em outro aparelho, a pessoa reencontra a carteira que já tinha gerado."""
+    return banco.ultima_recomendacao(con, usuario["id"])
 
 
 # ---------------------------------------------------------------------------

@@ -10,6 +10,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Never push without the user's explicit authorization in the current conversation** — this covers `git push` (including force pushes) and GitHub tools that write to the remote (`push_files`, `create_or_update_file`, `delete_file`, `create_branch`, `merge_pull_request`, `update_pull_request_branch`). Commit locally, show what will be pushed (`git log origin/<branch>..HEAD`), and ask first. `.claude/settings.json` enforces this with `ask` permission rules and a `PreToolUse` hook (`.claude/hooks/revisar-push.sh`) that puts the outgoing commits and changed files in the approval prompt, so the user reviews exactly what leaves before allowing it.
 
+### Autoria dos commits
+
+Mais de uma pessoa usa a mesma conta do Claude. O prefixo da mensagem diz quem está escrevendo, e os commits feitos a partir daquele prompt devem ter essa pessoa como **autor** (é o autor que conta como contribuição no perfil do GitHub). O **committer** continua sendo o Claude (`Claude <noreply@anthropic.com>`), porque as sessões na nuvem assinam os commits com a chave do Claude e o GitHub só os mostra como "Verified" se o committer for ele:
+
+| Prefixo da mensagem | Pessoa | `user.name` | `user.email` |
+|---|---|---|---|
+| `-r` | Rafael K. Shimomura (GitHub `rKakizuko`) | `rkakizuko` | `160166067+rKakizuko@users.noreply.github.com` |
+| sem prefixo | ainda não definido | identidade padrão da sessão | identidade padrão da sessão |
+
+- Defina o autor **em cada commit** com `--author` — não mude o `git config`, porque prompts de pessoas diferentes podem se alternar na mesma sessão e o committer precisa continuar sendo o Claude: `git commit --author="rkakizuko <160166067+rKakizuko@users.noreply.github.com>" ...`
+- Vale o prefixo do prompt que pediu a mudança. Na dúvida sobre quem pediu, pergunte antes de commitar.
+- Mantenha a linha `Co-Authored-By` do Claude no fim da mensagem — o GitHub mostra os dois como autores.
+- Use só e-mails *noreply* do GitHub nesta tabela, para não expor e-mails pessoais no repositório.
+
 ## Commands
 
 **Always use the `.venv` virtual environment (Python 3.11)** — never the global Python; see `skills/ambiente-virtual/SKILL.md` for setup, the activation check and common errors. Python 3.11 (versions pinned in `requirements.txt`; `numba`/`contourpy` are pinned to avoid numpy 2.x, which breaks shap 0.46). Run everything from the repo root, as modules (`python -m src.X`).
@@ -21,18 +35,19 @@ python -m src.pipeline                      # full pipeline: prepare → segment
 python -m src.pipeline --out ensaio --sample-size 5000   # isolated dry run, does not touch data/ models/ reports/
 python -m src.prepare_data                  # single stages, in order: prepare_data, segmentation, recommender, raio_x, personas, bias_audit
 
-pytest                                      # all tests (no Kaggle data or trained models needed)
+pytest                                      # all tests (no Kaggle data or trained models needed; user/DB tests need PostgreSQL, see below)
 pytest tests/test_portfolio.py              # one file
 pytest tests/test_portfolio.py::test_name   # one test
 pytest -k carteira                          # by keyword
 
 streamlit run app/main.py                   # Streamlit UI, http://localhost:8501
 uvicorn api.main:app --reload --port 8000   # FastAPI backend for the React front
+python -m api.usuarios criar-admin          # first admin user (interactive); public sign-up only creates "usuario"
 cd frontend; npm install; npm run dev       # React/Vite front, http://localhost:5173 (proxies /api → :8000)
 cd frontend; npm run build                  # type-check (tsc -b) + build; afterwards the API also serves frontend/dist at :8000
 ```
 
-`ASSESSOR_MODELS_DIR` points the Streamlit app and the API to another folder containing `segmentation.joblib`, `recommender.joblib` and `prep_stats.json` (plus optional `raio_x.json`). Streamlit only reloads `app/main.py`, so restart it after changing `src/`.
+`ASSESSOR_DATABASE_URL` points the API to the PostgreSQL users database (default `postgresql://assessor:assessor@localhost:5432/assessor`, the local Docker container from the README). `ASSESSOR_MODELS_DIR` points the Streamlit app and the API to another folder containing `segmentation.joblib`, `recommender.joblib` and `prep_stats.json` (plus optional `raio_x.json`). Streamlit only reloads `app/main.py`, so restart it after changing `src/`.
 
 ## Architecture
 
@@ -46,11 +61,15 @@ The core design rule (D4/D16 in `docs/decisoes.md`) is a strict split between **
 
 **Two front ends, one logic.** `app/components.py` holds form definitions, answer ranges (faixas), validation and conversion to `Questionario` — testable without Streamlit. `app/main.py` (Streamlit) and `api/main.py` (FastAPI: `/api/saude`, `/api/questionario`, `/api/recomendacao`) both reuse `app.components` + `src.advisor`/`src.portfolio`. The React app in `frontend/src` only renders what the API returns — do not duplicate rules in TypeScript.
 
+**Users (D40, D41).** The React front requires login, and so does `POST /api/recomendacao` (each result is saved in `recomendacoes`, linked to the user). `api/usuarios.py` (router + `criar-admin` CLI) → `api/banco.py` (PostgreSQL via psycopg 3, plain SQL with `%s` placeholders; tables `usuarios`, `sessoes`, `tentativas_login`, `recomendacoes`, created on the first connection; scrypt password hashes; opaque bearer tokens stored as SHA-256; login lockout after `LOGIN_MAX_TENTATIVAS`) and `api/validacao.py` (pure validators: CPF check digits, name, age `IDADE_MINIMA`=18–`IDADE_MAXIMA`=122, e-mail, password; errors per field in `detail.campos`). Deletion is a soft delete (`excluido_em`); hard delete (LGPD) only for already soft-deleted users. CPF/e-mail stay unique even among soft-deleted users. Admin-only routes use the `exigir_admin` dependency; an admin cannot delete or demote themselves. The front only filters typing (limits come from `GET /api/auth/regras`). User data never feeds the models.
+
+**DB tests.** `tests/conftest.py` gives the `banco_postgres` fixture (empty tables, ids reset): it uses `ASSESSOR_TEST_DATABASE_URL` if set (its data is wiped!), otherwise starts a throwaway server with pytest-postgresql if `pg_ctl` is found, otherwise skips (`pytest -rs` shows why). PostgreSQL refuses to run as root, so in root containers start a server as the `postgres` user and set `ASSESSOR_TEST_DATABASE_URL`. Validator tests and requests without a token never touch the DB.
+
 **Configuration.** `src/config.py` holds every constant (paths, columns, product → asset-class mapping, seeds `RANDOM_STATE=42`, `SNAPSHOT_DATE`, `SAMPLE_SIZE`, k range, income edges). Other modules must not hardcode "magic" values. `src/pipeline.py` uses a `Paths` object so the whole pipeline can be redirected to another output root (used by `--out` and by tests).
 
 **Tests** never need the real 2.3 GB CSV: `tests/fakes.py` writes a synthetic `train_ver2.csv` reproducing the real file's dirt (padded ages, `NA`, `-999999`, income outliers, duplicates, two months), and `tests/test_recommender._signal_data` builds signal data used to train tiny models into `tmp_path` for `test_app.py` (Streamlit `AppTest`) and `test_api.py` (FastAPI `TestClient`). Tests monkeypatch `config` values (e.g. `K_RANGE`) to stay fast.
 
 ## Generated outputs and docs
 
-- Not versioned: `data/raw/`, `data/processed/`, `models/` (only `.gitkeep`). Versioned outputs: `reports/*.md` and `docs/figures/*.png`, regenerated by the pipeline stages.
-- `docs/decisoes.md` records every technical decision as D1–D39 (context → decision → discarded alternatives). Code comments reference these IDs; when making a new non-trivial decision, add a new D-entry there. `docs/limitacoes.md` covers limitations/bias/LGPD; `docs/roteiro_apresentacao.md` is the presentation script.
+- Not versioned: `data/raw/`, `data/processed/`, `models/` (only `.gitkeep`). User data lives only in PostgreSQL. Versioned outputs: `reports/*.md` and `docs/figures/*.png`, regenerated by the pipeline stages.
+- `docs/decisoes.md` records every technical decision as D1–D41 (context → decision → discarded alternatives). Code comments reference these IDs; when making a new non-trivial decision, add a new D-entry there. `docs/bpmn/` holds the to-be workflows (BPMN 2.0 `.bpmn` + exported `.svg`, one file per flow, indexed in its README) — update them when a user-facing flow changes; `docs/limitacoes.md` covers limitations/bias/LGPD; `docs/roteiro_apresentacao.md` is the presentation script.

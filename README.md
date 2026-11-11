@@ -37,13 +37,19 @@ Projeto final de IA Aplicada (BFSI). O usuário responde a um questionário e re
 
 ```
 assessor-investimentos/
+├── api/
+│   ├── main.py            # FastAPI do front React (questionário, recomendação)
+│   ├── usuarios.py        # login, cadastro e gerenciamento de usuários (D40)
+│   ├── banco.py           # PostgreSQL dos usuários (SQL puro, soft delete, sessões, recomendações)
+│   └── validacao.py       # validação de CPF, nome, idade, e-mail e senha
 ├── app/
 │   ├── main.py            # Etapa 7 — Streamlit (layout e navegação)
 │   └── components.py      # validação do formulário, gráfico (testáveis sem Streamlit)
 ├── data/raw/              # train_ver2.csv e microdados do Raio X (não versionados)
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
 ├── docs/
-│   ├── decisoes.md        # D1–D39: cada decisão técnica e as alternativas descartadas
+│   ├── decisoes.md        # D1–D41: cada decisão técnica e as alternativas descartadas
+│   ├── bpmn/              # fluxos to-be em BPMN 2.0 (.bpmn editável + .svg para ver no GitHub)
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
@@ -152,6 +158,45 @@ uvicorn api.main:app --reload --port 8000      # terminal 1: API
 cd frontend; npm install; npm run dev          # terminal 2: front em http://localhost:5173
 ```
 
+**Banco de dados (PostgreSQL, D41).** Os usuários do front ficam num PostgreSQL. O jeito mais simples
+de ter um no computador é pelo Docker Desktop (os dados ficam no volume `assessor-pg`):
+
+```powershell
+docker run -d --name assessor-postgres -e POSTGRES_USER=assessor -e POSTGRES_PASSWORD=assessor -e POSTGRES_DB=assessor -p 5432:5432 -v assessor-pg:/var/lib/postgresql/data postgres:16.4-alpine
+```
+
+A API já procura esse banco em `postgresql://assessor:assessor@localhost:5432/assessor`. Para usar
+outro servidor, defina `ASSESSOR_DATABASE_URL`. As tabelas são criadas sozinhas na primeira conexão.
+Nos próximos dias, basta `docker start assessor-postgres`.
+
+**Login.** O front abre numa tela de entrada (e-mail ou CPF + senha) com a aba **Criar conta**.
+O cadastro pela tela cria sempre um usuário comum. Crie o primeiro administrador pela linha de comando:
+
+```powershell
+python -m api.usuarios criar-admin             # pergunta nome, CPF, e-mail, idade e senha
+```
+
+Para gerar uma recomendação é preciso estar logado, e a última carteira de cada pessoa fica salva na
+conta. Em **Conta**, cada pessoa edita os próprios dados e troca a senha. O administrador também encontra
+**Gerenciar usuários**, onde pode cadastrar, editar, excluir (soft delete), restaurar e apagar
+definitivamente (LGPD) as contas. Depois de 5 senhas erradas, o login fica bloqueado por 15 minutos.
+No contêiner do Terraform, rode o mesmo comando com `docker exec -it assessor python -m api.usuarios criar-admin`.
+
+**Testes com banco.** Os testes de usuários precisam de um PostgreSQL só para eles:
+
+- **Com o PostgreSQL instalado** (o `pg_ctl` no PATH ou no instalador padrão do Windows), o `pytest`
+  sobe um servidor temporário sozinho e o apaga no fim.
+- **Sem instalar**, use um contêiner à parte. Os testes **apagam os dados** do banco indicado, então
+  nunca aponte para o banco do app:
+
+  ```powershell
+  docker run -d --name assessor-pg-testes -e POSTGRES_PASSWORD=testes -p 55432:5432 postgres:16.4-alpine
+  $env:ASSESSOR_TEST_DATABASE_URL = "postgresql://postgres:testes@localhost:55432/postgres"
+  pytest
+  ```
+
+Sem nenhum dos dois, esses testes aparecem como *pulados* (`pytest -rs` mostra o motivo), e o resto roda normalmente.
+
 Para apresentar com um único servidor: `cd frontend; npm run build` e depois só a API
 (`uvicorn api.main:app --port 8000`), que passa a servir o front em http://localhost:8000.
 
@@ -179,7 +224,8 @@ sintéticos com 10 mil clientes, o pipeline completo levou ~21 s.
 
 ## Documentação
 
-- [Decisões técnicas (D1–D39)](docs/decisoes.md)
+- [Decisões técnicas (D1–D41)](docs/decisoes.md)
+- [Fluxos to-be em BPMN: login, carteira, conta, gestão de usuários e treino](docs/bpmn/README.md)
 - [Deploy com Terraform no Docker local](infra/docker/README.md)
 - [Deploy com Terraform no Google Cloud (cota grátis)](infra/gcp/README.md)
 - [Limitações, vieses, ética e próximos passos](docs/limitacoes.md)

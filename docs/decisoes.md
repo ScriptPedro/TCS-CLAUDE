@@ -476,3 +476,111 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
   - **Túnel com conta do Cloudflare e domínio próprio** (dá um endereço fixo, mas exige conta e domínio).
 - **Limitação:** o app fica no ar apenas enquanto o computador estiver ligado. O link do túnel muda a
   cada reinício e depende de um serviço gratuito sem garantia de disponibilidade.
+
+## D40 — Usuários do sistema: banco SQL, login e gerenciamento com soft delete
+
+> O banco começou em SQLite. Ele passou a ser **PostgreSQL** na D41. O resto desta decisão
+> (soft delete, sessões, papéis, validações) continua valendo.
+
+- **Contexto:** o front React passa a exigir login. É preciso cadastrar quem usa o sistema, separar
+  administradores de usuários comuns e excluir contas sem apagar o histórico.
+- **Decisão:**
+  - **SQLite com SQL puro** (`sqlite3` da biblioteca padrão), em `api/banco.py`. O arquivo é
+    `data/usuarios.db` (fora do Git) ou o que `ASSESSOR_DB` indicar. As tabelas `usuarios` e
+    `sessoes` são criadas na primeira conexão. Não entra nenhuma dependência nova, então
+    `requirements-deploy.txt` e a imagem não mudam.
+  - **Soft delete:** excluir só preenche `excluido_em` e encerra as sessões da pessoa. A conta some
+    das listagens e não faz login, mas a linha continua no banco e o administrador pode restaurá-la.
+    CPF e e-mail são únicos **inclusive entre excluídos**: quem tem conta desativada pede a
+    reativação, em vez de criar uma segunda conta com o mesmo CPF.
+  - **Senhas** com `hashlib.scrypt` e sal aleatório (custo em `config.SCRYPT_*`). **Sessões** usam um
+    token aleatório opaco (`secrets`). O banco guarda só o hash SHA-256 do token, que expira em
+    `config.SESSAO_HORAS` horas. Logout, troca de senha e exclusão derrubam as sessões.
+  - **Papéis:** `usuario` e `admin`. O cadastro pela tela cria sempre `usuario`. O primeiro admin é
+    criado pela linha de comando (`python -m api.usuarios criar-admin`). Um admin não pode se excluir
+    nem tirar o próprio acesso de admin, então sempre resta ao menos um.
+  - **Validação no servidor** (`api/validacao.py`, funções puras):
+    - CPF: 11 dígitos, sem todos iguais, com dígitos verificadores conferidos. Aceita com ou sem
+      máscara.
+    - Nome: nome e sobrenome, só letras (com acento), espaço, apóstrofo e hífen.
+    - Idade: inteiro de **18** (maioridade, como no questionário) a **122**, o maior registro
+      verificado da história (Jeanne Calment, 122 anos e 164 dias). Recusa sinal, decimal, notação
+      científica e `bool`. O banco repete o limite com um `CHECK`.
+    - E-mail: formato válido, gravado em minúsculas.
+    - Senha: 8 a 128 caracteres, com letras e números.
+
+    As mensagens são em português e saem **por campo** (`detail.campos`).
+  - **No front** os campos só filtram o que pode ser digitado: a idade aceita só algarismos e ignora
+    valores acima do limite, o CPF ganha máscara e o nome não aceita números nem símbolos. Os
+    limites vêm de `GET /api/auth/regras`, para não duplicar regra em TypeScript.
+  - **Privacidade:** a listagem do admin mostra o CPF mascarado (`***.456.789-**`). O CPF completo só
+    aparece para o próprio usuário e na ficha de edição. O CPF não muda depois do cadastro.
+  - **Bloqueio de login:** depois de 5 senhas erradas em 15 minutos (`config.LOGIN_*`), a conta
+    fica bloqueada até completar 15 minutos sem erro, e nem a senha certa entra. Errar pelo e-mail ou
+    pelo CPF soma no mesmo contador. Um login que não existe tem contador próprio. Acertar zera as
+    falhas.
+  - **Recomendação exige login** e cada resultado fica salvo em `recomendacoes`, ligado a quem o
+    pediu, com as respostas e o resultado em JSON. Ao entrar, o front busca a última
+    (`GET /api/recomendacoes/ultima`), então a carteira aparece em qualquer aparelho. O Streamlit
+    não usa a API e continua sem login.
+  - **Dados próprios:** a pessoa edita nome, e-mail e idade (`PUT /api/auth/eu`) e troca a senha
+    informando a atual (`POST /api/auth/senha`). A troca encerra todos os logins e devolve um token
+    novo para o aparelho atual.
+  - **Exclusão definitiva (LGPD, art. 18, VI):** só para contas já excluídas (são dois passos, de
+    propósito). Apaga a linha, as sessões, as recomendações e as tentativas de login. Depois disso
+    o CPF pode criar uma conta nova.
+- **Alternativas descartadas:**
+  - **SQLAlchemy/ORM** (dependência a mais para duas tabelas; o SQL puro fica visível para a banca).
+  - **JWT** (exige guardar um segredo e não dá para revogar no logout sem uma lista de bloqueio; o
+    token opaco no banco resolve as duas coisas).
+  - **bcrypt/passlib** (dependência a mais; o scrypt da biblioteca padrão é recomendado pela OWASP).
+  - **Exclusão física** (perde o histórico e impede a restauração).
+  - **Unicidade de CPF só entre ativos** (permitiria duas contas da mesma pessoa).
+  - **Bloqueio por IP** (atrás de proxy ou túnel, o IP visto pela API é o do túnel, e todo mundo
+    seria bloqueado junto).
+- **Limitações:** o bloqueio por conta permite que alguém trave a conta de outra pessoa errando a
+  senha de propósito (o bloqueio é curto por isso). Não há recuperação de senha por e-mail nem
+  confirmação de e-mail.
+
+## D41 — PostgreSQL no lugar do SQLite para os usuários
+
+- **Contexto:** o grupo pediu um banco de verdade para os usuários (D40), igual ao que um banco usaria
+  em produção, em vez de um arquivo SQLite dentro do contêiner.
+- **Decisão:**
+  - **PostgreSQL 16** com **psycopg 3** (`psycopg[binary]`, sem compilar nada no Windows). O SQL
+    continua escrito à mão em `api/banco.py`, agora com `%s` nos parâmetros.
+  - **Tipos do Postgres:**
+    - `GENERATED ALWAYS AS IDENTITY` nos ids e `TIMESTAMPTZ` nas datas (a API devolve texto ISO 8601).
+    - `JSONB` nas respostas e no resultado das recomendações.
+    - `CHAR(11)` com uma regex de 11 dígitos no CPF, e um `CHECK` de e-mail em minúsculas.
+    - `ILIKE` na busca, com `%` e `_` digitados tratados como texto.
+  - **Esquema:** criado na primeira conexão de cada processo (`CREATE ... IF NOT EXISTS`), com uma
+    trava (`pg_advisory_xact_lock`) para dois processos não criarem as tabelas ao mesmo tempo. Não há
+    ferramenta de migração.
+  - **Corrida no cadastro:** se duas requisições gravarem o mesmo CPF ao mesmo tempo, o `INSERT` roda
+    num *savepoint*. A violação de unicidade vira a mesma mensagem de "CPF já cadastrado".
+  - **Endereço:** vem de `ASSESSOR_DATABASE_URL`. O padrão (`config.DATABASE_URL`) é o Postgres local
+    do README (`docker run ... postgres:16.4-alpine`), com uma senha que só vale para desenvolvimento.
+    Se o banco estiver fora do ar, a API responde 503 com uma mensagem clara. Pedidos sem token
+    recebem 401 antes de abrir conexão.
+  - **Docker/Terraform (D39):** um contêiner `assessor-postgres` na rede interna, sem porta aberta no
+    computador. Os dados ficam no volume `assessor-postgres`, que sobrevive a `apply` e `destroy`. A
+    senha vem da variável `senha_postgres`.
+  - **Testes:** a fixture `banco_postgres` (`tests/conftest.py`) usa o servidor de
+    `ASSESSOR_TEST_DATABASE_URL` ou sobe um Postgres temporário com o `pytest-postgresql`, se houver
+    `pg_ctl` na máquina. Ela limpa as tabelas antes de cada teste. Sem Postgres, só os testes que
+    precisam do banco são pulados, com o motivo. As validações e a recusa sem token rodam sempre.
+- **Alternativas descartadas:**
+  - **Manter o SQLite** (é um arquivo local, não aguenta bem vários processos e não representa um
+    banco de produção).
+  - **SQLAlchemy para rodar os testes em SQLite** (os testes não exercitariam o Postgres de verdade, e
+    os dois dialetos divergem em tipos e em `RETURNING`).
+  - **Pool de conexões** (`psycopg_pool`; é uma dependência a mais e o volume de um projeto acadêmico
+    não precisa).
+  - **Cloud SQL no GCP** (não tem cota grátis; veja a limitação).
+- **Limitações:**
+  - No **Cloud Run (D38)** não há Postgres incluído. Para o login funcionar lá, é preciso apontar
+    `ASSESSOR_DATABASE_URL` para um Postgres externo (ex.: um serviço com camada grátis), e isso não
+    está no Terraform do GCP.
+  - O Postgres não roda como **root**: em contêineres de CI que rodam como root, suba o servidor com
+    outro usuário e use `ASSESSOR_TEST_DATABASE_URL`.
