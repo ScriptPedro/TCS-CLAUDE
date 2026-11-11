@@ -8,6 +8,7 @@ import Entrar from "./components/Entrar";
 import Icone, { type NomeIcone } from "./components/Icone";
 import Usuarios from "./components/Usuarios";
 import type { Regras, Resultado, Sessao, Usuario } from "./types";
+import { rolarParaTopo } from "./rolagem";
 
 // Simulação de um app de banco: a home é cenário e o assessor é a feature do projeto.
 // Só entra quem fez login (D40); a aba "Conta" leva ao gerenciamento de usuários dos administradores.
@@ -74,7 +75,7 @@ export default function App() {
   }, [encerrar, carregarUltima]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    rolarParaTopo();
   }, [aba]);
 
   const entrou = ({ token, usuario: u }: Sessao) => {
@@ -133,7 +134,7 @@ export default function App() {
           onUsuarios={() => setAba("usuarios")} onSair={sairDaConta} />
       )}
       {aba === "usuarios" && usuario.papel === "admin" && (
-        <Usuarios eu={usuario} regras={regras} onSair={() => setAba("conta")} />
+        <Usuarios eu={usuario} regras={regras} onEuAtualizado={setUsuario} onSair={() => setAba("conta")} />
       )}
 
       {aviso && <div className="aviso-flutuante" role="status">{aviso}</div>}

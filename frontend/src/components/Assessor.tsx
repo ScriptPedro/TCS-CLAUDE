@@ -6,6 +6,7 @@ import Icone from "./Icone";
 import Inicio from "./Inicio";
 import Questionario from "./Questionario";
 import Resultado from "./Resultado";
+import { rolarParaTopo } from "../rolagem";
 
 export type TelaAssessor = "inicio" | "questionario" | "resultado";
 
@@ -38,7 +39,7 @@ export default function Assessor({ inicial, resultadoSalvo, onResultado, onSair 
   }, []);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    rolarParaTopo(true);
   }, [tela, etapa]);
 
   const responder = (campo: string, valor: Respostas[string]) => {

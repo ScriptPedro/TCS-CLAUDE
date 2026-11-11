@@ -93,9 +93,15 @@ body { background: var(--realce); }
   background: var(--papel); display: flex; flex-direction: column;
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
+/* No desktop o aparelho tem a altura da janela e a rolagem acontece DENTRO dele, como num celular:
+   a página em si não rola, o topo do app não some e a barra inferior fica colada na borda do aparelho. */
 @media (min-width: 600px) {
-  body { padding: 24px 0; }
-  .celular { min-height: calc(100vh - 48px); border-radius: 28px; box-shadow: 0 0 0 10px var(--tinta), 0 24px 60px rgb(0 0 0 / 0.25); overflow: clip; }
+  body { padding: 24px 0; height: 100vh; height: 100dvh; overflow: hidden; }
+  .celular {
+    height: calc(100vh - 48px); height: calc(100dvh - 48px); min-height: 0;
+    border-radius: 28px; box-shadow: 0 0 0 10px var(--tinta), 0 24px 60px rgb(0 0 0 / 0.25);
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding-bottom: 0;
+  }
 }
 .conteudo { flex: 1; width: 100%; padding: 1.5rem 16px 2rem; }
 .rodape { font-size: 0.8125rem; color: var(--grafite); margin-top: 2.5rem; }
@@ -371,7 +377,8 @@ th { font-weight: 700; color: var(--grafite); }
 .barra-inferior button.ativa { color: var(--tinta); font-weight: 700; }
 .barra-inferior button.ativa svg { stroke-width: 2.4; }
 @media (min-width: 600px) {
-  .barra-inferior { bottom: 24px; border-radius: 0 0 28px 28px; }
+  /* Presa ao fundo do aparelho (o contêiner que rola), não ao da janela */
+  .barra-inferior { position: sticky; bottom: 0; left: auto; transform: none; margin-top: auto; flex: none; }
 }
 
 .aviso-flutuante {

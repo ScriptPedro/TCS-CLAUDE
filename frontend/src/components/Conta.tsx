@@ -3,6 +3,7 @@ import { editarMeusDados, ErroApi, trocarSenha } from "../api";
 import type { MeusDados, Regras, Sessao, Usuario } from "../types";
 import { CampoIdade, CampoNome, CampoSenha, CampoTexto, ErrosGerais } from "./Campos";
 import Icone from "./Icone";
+import { rolarParaTopo } from "../rolagem";
 
 interface Props {
   usuario: Usuario;
@@ -29,7 +30,7 @@ export default function Conta({ usuario, regras, onAtualizado, onNovaSessao, onU
   const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    rolarParaTopo();
   }, [tela]);
 
   const concluir = (mensagem: string) => {
