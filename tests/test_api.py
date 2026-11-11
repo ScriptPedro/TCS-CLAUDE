@@ -129,10 +129,11 @@ def test_recomendacao_exige_login(client: TestClient) -> None:
 def test_recomendacao_fica_salva_para_quem_pediu(logado: TestClient) -> None:
     assert logado.get("/api/recomendacoes/ultima").json() is None
     logado.post("/api/recomendacao", json={"respostas": MODERADO})
-    res = logado.post("/api/recomendacao", json={"respostas": ENDIVIDADO}).json()
+    res = logado.post("/api/recomendacao", json={"respostas": {**ENDIVIDADO, "lixo": "x" * 1000}}).json()
     ultima = logado.get("/api/recomendacoes/ultima").json()
     assert ultima["resultado"] == res and ultima["respostas"]["divida_cara"] == "sim"
     assert ultima["perfil"] == res["perfil"]["efetivo"]
+    assert "lixo" not in ultima["respostas"]  # só as perguntas conhecidas vão para o banco
     # outra pessoa não vê a recomendação de ninguém
     outro = TestClient(api.app)
     token = outro.post("/api/auth/registro", json={**USUARIA, "cpf": "935.411.347-80", "email": "bruno@exemplo.com"}).json()["token"]

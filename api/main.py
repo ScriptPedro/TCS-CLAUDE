@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -44,6 +45,17 @@ FRONT_DIST = ROOT / "frontend" / "dist"
 
 app = FastAPI(title="Assessor de Investimentos Virtual", version="1.0.0")
 app.include_router(roteador_usuarios)  # antes da rota coringa do front, no fim do arquivo
+
+
+@app.exception_handler(RequestValidationError)
+def formato_invalido(_: Request, exc: RequestValidationError) -> JSONResponse:
+    """Erros de formato (corpo que não é JSON/objeto, parâmetro de tipo errado) no mesmo formato
+    do resto da API e em português, para o front conseguir mostrá-los."""
+    campos = sorted({str(e["loc"][-1]) for e in exc.errors() if e.get("loc")} - {"body"})
+    detalhe = f" Confira: {', '.join(campos)}." if campos else ""
+    return JSONResponse(status_code=422, content={"detail": {
+        "erros": [f"A requisição veio num formato inválido.{detalhe}"], "campos": {},
+    }})
 
 
 @app.exception_handler(banco.BancoIndisponivel)
@@ -199,7 +211,9 @@ def recomendacao(body: Respostas, usuario: dict[str, Any] = Depends(usuario_loga
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail={"erros": [f"Modelos não encontrados. {exc}"]}) from exc
     resultado = serializar(aconselhar(q, artefatos), ui.avisos_de_consistencia(q))
-    banco.salvar_recomendacao(con, usuario["id"], resultado["perfil"]["efetivo"], body.respostas, resultado)
+    # Só as perguntas conhecidas vão para o banco: campos extras enviados junto são descartados
+    respostas = {campo: body.respostas[campo] for campo in ui.PERGUNTAS if campo in body.respostas}
+    banco.salvar_recomendacao(con, usuario["id"], resultado["perfil"]["efetivo"], respostas, resultado)
     return resultado
 
 

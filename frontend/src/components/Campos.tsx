@@ -45,8 +45,12 @@ export function CampoTexto({ rotulo, valor, erro, ajuda, onChange, tipo = "text"
   );
 }
 
-/** Letras (com acento), espaço, apóstrofo e hífen; números e símbolos nem entram. */
-export const filtrarNome = (v: string) => v.replace(/[^\p{L} '\-]/gu, "").replace(/^\s+/, "");
+/**
+ * Letras (com acento), espaço, apóstrofo e hífen; números e símbolos nem entram. NFC junta letra e
+ * acento digitados separados, e o apóstrofo curvo (’) que o celular coloca sozinho vira o simples.
+ */
+export const filtrarNome = (v: string) =>
+  v.normalize("NFC").replace(/[’‘ʼ´`]/g, "'").replace(/[^\p{L} '\-]/gu, "").replace(/^\s+/, "");
 
 export function CampoNome(props: Base & { regras: Regras | null }) {
   return (

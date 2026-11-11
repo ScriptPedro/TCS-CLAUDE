@@ -252,9 +252,11 @@ def criar(body: NovoUsuario, _: dict[str, Any] = Depends(exigir_admin),
 
 
 def _existente(con: banco.Conexao, usuario_id: int, incluir_excluidos: bool = False) -> dict[str, Any]:
-    usuario = banco.buscar_usuario(con, usuario_id, incluir_excluidos)
+    usuario = banco.buscar_usuario(con, usuario_id, incluir_excluidos=True)
     if usuario is None:
         raise _erro(404, "Usuário não encontrado.")
+    if usuario["excluido_em"] and not incluir_excluidos:
+        raise _erro(409, "Esta conta está excluída. Restaure-a antes de alterá-la.")
     return usuario
 
 

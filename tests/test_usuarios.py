@@ -67,6 +67,7 @@ def test_cpf_valido_com_e_sem_mascara(cpf: str) -> None:
     "5299822472",       # 10 dígitos
     "529982247251",     # 12 dígitos
     "529.982.247-2a",   # letra
+    "５２９.982.247-25",  # algarismos de largura cheia
     "", None, 52998224725,
 ])
 def test_cpf_invalido(cpf: object) -> None:
@@ -79,12 +80,15 @@ def test_cpf_invalido(cpf: object) -> None:
     ("  joão   da  silva ", "joão da silva"),
     ("Maria D'Ávila", "Maria D'Ávila"),
     ("Ana-Clara Gonçalves", "Ana-Clara Gonçalves"),
+    ("Jose\u0301 Souza", "José Souza"),         # acento decomposto (NFD), como o macOS envia
+    ("Ana D’Ávila", "Ana D'Ávila"),              # apóstrofo curvo que o celular coloca sozinho
 ])
 def test_nome_valido(nome: str, esperado: str) -> None:
     assert validar_nome(nome) == (esperado, None)
 
 
 @pytest.mark.parametrize("nome", ["Ana", "Ana 2 Souza", "Ana@Souza Lima", "-Ana Souza", "Ana  - Souza", "Ana Souza'",
+                                  "Maria ª Souza", "Ana 😀 Souza",
                                   "A" * (config.NOME_MAX_CARACTERES + 1) + " B", "", "   ", None, 123])
 def test_nome_invalido(nome: object) -> None:
     valor, erro = validar_nome(nome)
@@ -96,7 +100,7 @@ def test_idade_valida(idade: object, esperado: int) -> None:
     assert validar_idade(idade) == (esperado, None)
 
 
-@pytest.mark.parametrize("idade", [17, "17", 1, 0, "0", -1, "-1", "+5", 123, "123", "1000", 30.5, "30.5", "30,5", "1e2", "trinta",
+@pytest.mark.parametrize("idade", ["３０", "٣٠", 17, "17", 1, 0, "0", -1, "-1", "+5", 123, "123", "1000", 30.5, "30.5", "30,5", "1e2", "trinta",
                                    True, "", None])
 def test_idade_so_aceita_inteiro_de_maior_ate_o_recorde(idade: object) -> None:
     valor, erro = validar_idade(idade)
@@ -251,7 +255,10 @@ def test_soft_delete_e_restauracao(client: TestClient, admin: dict[str, str], db
     assert ana_id not in [u["id"] for u in client.get("/api/usuarios", headers=admin).json()]
     excluidos = client.get("/api/usuarios?excluidos=true", headers=admin).json()
     assert next(u for u in excluidos if u["id"] == ana_id)["excluido_em"]
-    assert client.delete(f"/api/usuarios/{ana_id}", headers=admin).status_code == 404
+    assert client.delete(f"/api/usuarios/{ana_id}", headers=admin).status_code == 409  # já excluída
+    edicao = {"nome": "Ana Souza", "email": "ana@exemplo.com", "idade": 28, "papel": "usuario"}
+    r = client.put(f"/api/usuarios/{ana_id}", headers=admin, json=edicao)
+    assert r.status_code == 409 and "Restaure" in r.json()["detail"]["erros"][0]
 
     # CPF/e-mail de conta desativada não são recadastrados: a conta é restaurada
     r = client.post("/api/auth/registro", json=ANA)
@@ -386,3 +393,10 @@ def test_banco_fora_do_ar_vira_503(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ASSESSOR_DATABASE_URL", "postgresql://ninguem@127.0.0.1:1/nada")
     r = TestClient(api.app).post("/api/auth/login", json={"login": "a@b.com", "senha": "senhaForte1"})
     assert r.status_code == 503 and "PostgreSQL" in r.json()["detail"]["erros"][0]
+
+
+def test_formato_invalido_vira_erro_em_portugues(client: TestClient, admin: dict[str, str]) -> None:
+    r = client.post("/api/auth/login", json=["não é objeto"])
+    assert r.status_code == 422 and r.json()["detail"]["erros"][0].startswith("A requisição veio num formato inválido")
+    r = client.get("/api/usuarios?excluidos=talvez", headers=admin)
+    assert r.status_code == 422 and "excluidos" in r.json()["detail"]["erros"][0]

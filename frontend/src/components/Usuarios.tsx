@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   apagarDefinitivo, buscarUsuario, criarUsuario, editarUsuario, ErroApi, excluirUsuario, listarUsuarios, restaurarUsuario,
 } from "../api";
 import type { DadosUsuario, Papel, Regras, Usuario } from "../types";
 import { CampoCpf, CampoIdade, CampoNome, CampoSenha, CampoTexto, ErrosGerais } from "./Campos";
 import Icone from "./Icone";
+import { rolarParaTopo } from "../rolagem";
 
 interface Props {
   eu: Usuario;
   regras: Regras | null;
+  /** O admin editou a própria conta aqui: o App precisa do nome/e-mail novos (saudação, aba Conta). */
+  onEuAtualizado: (u: Usuario) => void;
   onSair: () => void;
 }
 
@@ -17,7 +20,7 @@ const ROTULO_PAPEL: Record<Papel, string> = { usuario: "Usuário", admin: "Admin
 const data = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
 
 /** Gerenciamento de usuários: só administradores chegam aqui (o servidor também confere). */
-export default function Usuarios({ eu, regras, onSair }: Props) {
+export default function Usuarios({ eu, regras, onEuAtualizado, onSair }: Props) {
   const [lista, setLista] = useState<Usuario[] | null>(null);
   const [busca, setBusca] = useState("");
   const [excluidos, setExcluidos] = useState(false);
@@ -27,9 +30,15 @@ export default function Usuarios({ eu, regras, onSair }: Props) {
   const [confirmando, setConfirmando] = useState<number | null>(null);
   const [apagando, setApagando] = useState<number | null>(null);
 
+  // Numera as buscas: se uma resposta antiga chegar depois de uma nova, ela é ignorada
+  const ultimaBusca = useRef(0);
+
   const carregar = useCallback(async () => {
+    const numero = ++ultimaBusca.current;
     try {
-      setLista(await listarUsuarios(busca, excluidos));
+      const resposta = await listarUsuarios(busca, excluidos);
+      if (numero !== ultimaBusca.current) return;
+      setLista(resposta);
       setErro(null);
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Erro ao carregar os usuários.");
@@ -61,14 +70,15 @@ export default function Usuarios({ eu, regras, onSair }: Props) {
     }
   };
 
-  const salvo = async (mensagem: string) => {
+  const salvo = async (mensagem: string, u: Usuario) => {
+    if (u.id === eu.id) onEuAtualizado(u);
     setEditando(null);
     setAviso(mensagem);
     await carregar();
   };
 
   useEffect(() => {
-    window.scrollTo({ top: 0 });
+    rolarParaTopo();
   }, [editando]);
 
   return (
@@ -164,7 +174,7 @@ interface FormProps {
   usuario: Usuario | null;
   eu: Usuario;
   regras: Regras | null;
-  onSalvo: (mensagem: string) => void;
+  onSalvo: (mensagem: string, u: Usuario) => void;
   onCancelar: () => void;
 }
 
@@ -196,11 +206,11 @@ function FormUsuario({ usuario, eu, regras, onSalvo, onCancelar }: FormProps) {
     try {
       if (novo) {
         const u = await criarUsuario(dados);
-        onSalvo(`A conta de ${u.nome} foi cadastrada.`);
+        onSalvo(`A conta de ${u.nome} foi cadastrada.`, u);
       } else {
         const { cpf: _, ...corpo } = dados; // CPF não muda depois do cadastro
         const u = await editarUsuario(usuario.id, corpo);
-        onSalvo(`A conta de ${u.nome} foi atualizada.`);
+        onSalvo(`A conta de ${u.nome} foi atualizada.`, u);
       }
     } catch (erro) {
       if (erro instanceof ErroApi) {
