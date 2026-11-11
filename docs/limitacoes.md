@@ -56,8 +56,8 @@
 ## 5. Ética e LGPD (Lei 13.709/2018)
 
 - **Minimização:** o questionário só pergunta o que é usado. **Não pergunta sexo**, nome, CPF nem contato.
-- **Cadastro de usuários (D40):** o login do front React guarda nome, CPF, e-mail e idade em
-  `data/usuarios.db` (SQLite, fora do Git). Esses dados **não entram nos modelos**. Cada recomendação
+- **Cadastro de usuários (D40, D41):** o login do front React guarda nome, CPF, e-mail e idade num
+  PostgreSQL (nada disso vai para o Git). Esses dados **não entram nos modelos**. Cada recomendação
   pedida pelo front fica salva com as respostas do questionário (renda, dívidas, reserva), ligada à
   conta: são **dados financeiros pessoais**. As senhas ficam só como hash scrypt com sal. A listagem do
   administrador mascara o CPF. A exclusão comum é lógica (soft delete) para permitir restaurar a conta.

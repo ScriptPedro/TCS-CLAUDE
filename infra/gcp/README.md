@@ -100,6 +100,14 @@ terraform output url        # endereço público do app
 
 Abra `<url>/api/saude`. Ele deve responder `{"modelos": true, ...}`.
 
+## Login e banco de usuários
+
+O front exige login, e os usuários ficam num PostgreSQL (D41). Este Terraform **não** cria um
+Postgres: o Cloud SQL não tem cota grátis. Sem banco, o app abre, mas o login e a recomendação
+respondem 503. Para usar no Cloud Run, crie um Postgres externo e passe o endereço na variável de
+ambiente `ASSESSOR_DATABASE_URL` do serviço. Se for publicar, prefira o Docker local (`infra/docker`),
+que já sobe o Postgres junto.
+
 ## Atualizar
 
 - **Mudou o código:** monte e envie com uma tag nova (`v2`), troque `imagem_tag` e rode `terraform apply`.

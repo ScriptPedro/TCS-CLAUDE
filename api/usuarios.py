@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import argparse
 import getpass
-import sqlite3
 import sys
 from collections.abc import Iterator
 from typing import Any
@@ -74,7 +73,8 @@ def serializar(u: dict[str, Any], cpf_completo: bool = False) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Dependências
 # ---------------------------------------------------------------------------
-def conexao() -> Iterator[sqlite3.Connection]:
+def conexao() -> Iterator[banco.Conexao]:
+    """Uma conexão por requisição (um Postgres de projeto acadêmico não precisa de pool)."""
     with banco.conectar() as con:
         yield con
 
@@ -86,11 +86,15 @@ def _token(authorization: str | None) -> str:
     return token.strip()
 
 
+def token_obrigatorio(authorization: str | None = Header(default=None)) -> str:
+    return _token(authorization)
+
+
 def usuario_logado(
-    authorization: str | None = Header(default=None),
-    con: sqlite3.Connection = Depends(conexao),
+    token: str = Depends(token_obrigatorio),  # antes da conexão: sem token, 401 sem nem abrir o banco
+    con: banco.Conexao = Depends(conexao),
 ) -> dict[str, Any]:
-    usuario = banco.usuario_da_sessao(con, _token(authorization))
+    usuario = banco.usuario_da_sessao(con, token)
     if usuario is None:
         raise _erro(401, "Sua sessão expirou. Entre de novo.")
     return usuario
@@ -158,7 +162,7 @@ def regras() -> dict[str, Any]:
 
 
 @roteador.post("/auth/registro", status_code=status.HTTP_201_CREATED)
-def registrar(body: Registro, con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+def registrar(body: Registro, con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     valores, erros = validar(body.model_dump(), CAMPOS_REGISTRO)
     if erros:
         raise _erro_validacao(erros)
@@ -170,7 +174,7 @@ def registrar(body: Registro, con: sqlite3.Connection = Depends(conexao)) -> dic
 
 
 @roteador.post("/auth/login")
-def entrar(body: Login, con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+def entrar(body: Login, con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     if not isinstance(body.login, str) or not isinstance(body.senha, str) or not body.login.strip() or not body.senha:
         raise _erro(422, "Informe e-mail ou CPF e a senha.")
     if minutos := banco.minutos_de_bloqueio(con, body.login):
@@ -187,7 +191,7 @@ def entrar(body: Login, con: sqlite3.Connection = Depends(conexao)) -> dict[str,
 
 
 @roteador.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
-def sair(authorization: str | None = Header(default=None), con: sqlite3.Connection = Depends(conexao)) -> Response:
+def sair(authorization: str | None = Header(default=None), con: banco.Conexao = Depends(conexao)) -> Response:
     banco.encerrar_sessao(con, _token(authorization))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -199,7 +203,7 @@ def eu(usuario: dict[str, Any] = Depends(usuario_logado)) -> dict[str, Any]:
 
 @roteador.put("/auth/eu")
 def editar_meus_dados(body: MeusDados, usuario: dict[str, Any] = Depends(usuario_logado),
-                      con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+                      con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     """Nome, e-mail e idade. CPF e tipo de usuário não mudam por aqui."""
     valores, erros = validar(body.model_dump(), ["nome", "email", "idade"])
     if erros:
@@ -212,7 +216,7 @@ def editar_meus_dados(body: MeusDados, usuario: dict[str, Any] = Depends(usuario
 
 @roteador.post("/auth/senha")
 def trocar_senha(body: TrocaSenha, usuario: dict[str, Any] = Depends(usuario_logado),
-                 con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+                 con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     """Confere a senha atual, grava a nova, encerra os outros logins e devolve um token novo."""
     if not isinstance(body.senha_atual, str) or not banco.conferir_senha_do_usuario(con, usuario["id"], body.senha_atual):
         raise _erro(422, "A senha atual está incorreta.", {"senha_atual": "A senha atual está incorreta."})
@@ -231,13 +235,13 @@ def trocar_senha(body: TrocaSenha, usuario: dict[str, Any] = Depends(usuario_log
 # ---------------------------------------------------------------------------
 @roteador.get("/usuarios")
 def listar(busca: str = "", excluidos: bool = False, _: dict[str, Any] = Depends(exigir_admin),
-           con: sqlite3.Connection = Depends(conexao)) -> list[dict[str, Any]]:
+           con: banco.Conexao = Depends(conexao)) -> list[dict[str, Any]]:
     return [serializar(u) for u in banco.listar_usuarios(con, busca, excluidos)]
 
 
 @roteador.post("/usuarios", status_code=status.HTTP_201_CREATED)
 def criar(body: NovoUsuario, _: dict[str, Any] = Depends(exigir_admin),
-          con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+          con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     valores, erros = validar(body.model_dump(), [*CAMPOS_REGISTRO, "papel"])
     if erros:
         raise _erro_validacao(erros)
@@ -247,7 +251,7 @@ def criar(body: NovoUsuario, _: dict[str, Any] = Depends(exigir_admin),
         raise _conflito(exc) from exc
 
 
-def _existente(con: sqlite3.Connection, usuario_id: int, incluir_excluidos: bool = False) -> dict[str, Any]:
+def _existente(con: banco.Conexao, usuario_id: int, incluir_excluidos: bool = False) -> dict[str, Any]:
     usuario = banco.buscar_usuario(con, usuario_id, incluir_excluidos)
     if usuario is None:
         raise _erro(404, "Usuário não encontrado.")
@@ -256,13 +260,13 @@ def _existente(con: sqlite3.Connection, usuario_id: int, incluir_excluidos: bool
 
 @roteador.get("/usuarios/{usuario_id}")
 def detalhar(usuario_id: int, _: dict[str, Any] = Depends(exigir_admin),
-             con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+             con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     return serializar(_existente(con, usuario_id, incluir_excluidos=True), cpf_completo=True)
 
 
 @roteador.put("/usuarios/{usuario_id}")
 def editar(usuario_id: int, body: Edicao, admin: dict[str, Any] = Depends(exigir_admin),
-           con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+           con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     _existente(con, usuario_id)
     dados = body.model_dump()
     campos = ["nome", "email", "idade", "papel"]
@@ -282,7 +286,7 @@ def editar(usuario_id: int, body: Edicao, admin: dict[str, Any] = Depends(exigir
 
 @roteador.delete("/usuarios/{usuario_id}", status_code=status.HTTP_204_NO_CONTENT)
 def excluir(usuario_id: int, admin: dict[str, Any] = Depends(exigir_admin),
-            con: sqlite3.Connection = Depends(conexao)) -> Response:
+            con: banco.Conexao = Depends(conexao)) -> Response:
     if usuario_id == admin["id"]:
         raise _erro(409, "Você não pode excluir a sua própria conta.")
     _existente(con, usuario_id)
@@ -292,7 +296,7 @@ def excluir(usuario_id: int, admin: dict[str, Any] = Depends(exigir_admin),
 
 @roteador.post("/usuarios/{usuario_id}/restaurar")
 def restaurar(usuario_id: int, _: dict[str, Any] = Depends(exigir_admin),
-              con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+              con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     _existente(con, usuario_id, incluir_excluidos=True)
     usuario = banco.restaurar_usuario(con, usuario_id)
     if usuario is None:
@@ -302,7 +306,7 @@ def restaurar(usuario_id: int, _: dict[str, Any] = Depends(exigir_admin),
 
 @roteador.delete("/usuarios/{usuario_id}/definitivo", status_code=status.HTTP_204_NO_CONTENT)
 def apagar_definitivo(usuario_id: int, _: dict[str, Any] = Depends(exigir_admin),
-                      con: sqlite3.Connection = Depends(conexao)) -> Response:
+                      con: banco.Conexao = Depends(conexao)) -> Response:
     if _existente(con, usuario_id, incluir_excluidos=True)["excluido_em"] is None:
         raise _erro(409, "Exclua a conta primeiro. A exclusão definitiva só vale para contas já excluídas.")
     banco.apagar_usuario_definitivo(con, usuario_id)
@@ -329,7 +333,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("criar-admin", help="cria um usuário administrador (pergunta os dados)")
     parser.parse_args(argv)
 
-    print(f"Banco: {banco.caminho_banco()}")
+    print(f"Banco: {banco.url_banco().split('@')[-1]}")  # sem usuário e senha
     dados = {
         "nome": input("Nome completo: "),
         "cpf": input("CPF: "),

@@ -1,8 +1,8 @@
 # Deploy com Terraform no Docker do próprio computador (D39): sem nuvem, sem cartão.
 # O Terraform monta a imagem a partir do Dockerfile da raiz, cria uma rede, sobe o
 # contêiner da API (que também serve o front React) com a pasta models/ montada em
-# /models, o banco de usuários num volume nomeado (D40) e, se pedido, um túnel do
-# Cloudflare com um endereço público temporário.
+# /models, um PostgreSQL para os usuários (D41), com os dados num volume nomeado, e,
+# se pedido, um túnel do Cloudflare com um endereço público temporário.
 
 locals {
   raiz = abspath("${path.module}/../..")
@@ -27,13 +27,51 @@ locals {
   )
   hash_codigo = sha1(join("", [for f in sort(local.arquivos_imagem) : filesha1("${local.raiz}/${f}")]))
 
-  # Volume do banco de usuários (D40). Não é um recurso do Terraform de propósito: o Docker o cria
-  # no primeiro apply e ele sobrevive a rebuilds, a recriações do contêiner e ao terraform destroy.
-  volume_usuarios = "${var.nome}-usuarios"
+  # Volume dos dados do Postgres (D41). Não é um recurso do Terraform de propósito: o Docker o cria
+  # no primeiro apply e ele sobrevive a rebuilds, a recriações dos contêineres e ao terraform destroy.
+  volume_postgres = "${var.nome}-postgres"
 }
 
 resource "docker_network" "rede" {
   name = var.nome
+}
+
+# ---------------------------------------------------------------------------
+# PostgreSQL dos usuários (D41): só na rede interna, sem porta aberta no computador
+# ---------------------------------------------------------------------------
+resource "docker_image" "postgres" {
+  name         = var.imagem_postgres
+  keep_locally = true
+}
+
+resource "docker_container" "postgres" {
+  name    = "${var.nome}-postgres"
+  image   = docker_image.postgres.image_id
+  restart = "unless-stopped"
+  env = [
+    "POSTGRES_USER=assessor",
+    "POSTGRES_PASSWORD=${var.senha_postgres}",
+    "POSTGRES_DB=assessor",
+  ]
+
+  volumes {
+    volume_name    = local.volume_postgres
+    container_path = "/var/lib/postgresql/data"
+  }
+
+  networks_advanced {
+    name = docker_network.rede.id
+  }
+
+  healthcheck {
+    test         = ["CMD", "pg_isready", "-U", "assessor", "-d", "assessor"]
+    interval     = "5s"
+    timeout      = "5s"
+    start_period = "10s"
+    retries      = 10
+  }
+  wait         = true
+  wait_timeout = 120
 }
 
 resource "docker_image" "app" {
@@ -55,7 +93,11 @@ resource "docker_container" "app" {
   name    = var.nome
   image   = docker_image.app.image_id
   restart = "unless-stopped"
-  env     = ["ASSESSOR_MODELS_DIR=/models", "ASSESSOR_DB=/app/data/usuarios.db"]
+  env = [
+    "ASSESSOR_MODELS_DIR=/models",
+    # Referenciar o contêiner do Postgres também faz o Terraform subi-lo (e esperar ficar saudável) antes
+    "ASSESSOR_DATABASE_URL=postgresql://assessor:${var.senha_postgres}@${docker_container.postgres.name}:5432/assessor",
+  ]
 
   ports {
     internal = 8080
@@ -66,11 +108,6 @@ resource "docker_container" "app" {
     host_path      = local.pasta_modelos
     container_path = "/models"
     read_only      = true
-  }
-
-  volumes {
-    volume_name    = local.volume_usuarios
-    container_path = "/app/data"
   }
 
   networks_advanced {

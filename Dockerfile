@@ -1,7 +1,8 @@
 # Imagem de produção do Assessor de Investimentos Virtual (D38, D39).
 # Um único contêiner: o FastAPI responde em /api e serve o front React compilado.
 # Os modelos NÃO entram na imagem: ficam montados em /models (pasta local no Docker,
-# bucket no Cloud Run). Normalmente quem monta e sobe é o Terraform em infra/.
+# bucket no Cloud Run). Os usuários ficam num PostgreSQL à parte, indicado por
+# ASSESSOR_DATABASE_URL (D41). Normalmente quem monta e sobe tudo é o Terraform em infra/.
 #
 #   docker build -t assessor .
 #   docker run -p 8080:8080 -v "$PWD/models:/models:ro" assessor   → http://localhost:8080
@@ -30,7 +31,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     MPLCONFIGDIR=/tmp/matplotlib \
     NUMBA_CACHE_DIR=/tmp/numba \
     ASSESSOR_MODELS_DIR=/models \
-    ASSESSOR_DB=/app/data/usuarios.db \
     PORT=8080
 
 WORKDIR /app
@@ -42,8 +42,7 @@ COPY app/ app/
 COPY api/ api/
 COPY --from=front /front/dist frontend/dist
 
-RUN useradd --create-home --uid 1000 assessor \
-    && mkdir -p data && chown assessor data   # banco SQLite de usuários (D40); monte um volume aqui
+RUN useradd --create-home --uid 1000 assessor
 USER assessor
 
 EXPOSE 8080

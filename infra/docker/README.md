@@ -10,7 +10,9 @@ Terraform ──► docker_image "assessor:local"   (build do Dockerfile: front 
           ──► docker_network "assessor"
           ──► docker_container "assessor"      http://localhost:8080
                     ├─ models/ montada somente leitura em /models
-                    └─ volume "assessor-usuarios" em /app/data (banco de usuários, D40)
+                    └─ ASSESSOR_DATABASE_URL → assessor-postgres
+          ──► docker_container "assessor-postgres"  PostgreSQL dos usuários (D41), só na rede interna
+                    └─ volume "assessor-postgres" em /var/lib/postgresql/data
           ──► docker_container "assessor-tunel"  (opcional) https://<aleatório>.trycloudflare.com
 ```
 
@@ -63,8 +65,10 @@ dentro do contêiner:
 docker exec -it assessor python -m api.usuarios criar-admin
 ```
 
-Os usuários ficam no volume `assessor-usuarios`. Eles sobrevivem a um novo `apply`, à troca do
-contêiner e ao `terraform destroy`.
+Os usuários ficam no PostgreSQL do contêiner `assessor-postgres`, com os dados no volume
+`assessor-postgres`. Eles sobrevivem a um novo `apply`, à troca dos contêineres e ao `terraform destroy`.
+A senha do banco é a variável `senha_postgres` (padrão `assessor`). O banco não abre porta no
+computador, mas troque a senha em `terraform.tfvars` antes do primeiro `apply` se for publicar o link.
 
 ## Atualizar
 
@@ -82,7 +86,7 @@ terraform destroy      # remove contêineres e rede (a imagem fica em cache para
 O volume com os usuários **não** é apagado pelo `destroy`. Para começar do zero, apague-o à mão:
 
 ```powershell
-docker volume rm assessor-usuarios
+docker volume rm assessor-postgres
 ```
 
 ## Variáveis

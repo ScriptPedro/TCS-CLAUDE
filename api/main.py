@@ -19,13 +19,12 @@ em http://localhost:8000. ASSESSOR_MODELS_DIR aponta para outra pasta de modelos
 from __future__ import annotations
 
 import os
-import sqlite3
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -45,6 +44,13 @@ FRONT_DIST = ROOT / "frontend" / "dist"
 
 app = FastAPI(title="Assessor de Investimentos Virtual", version="1.0.0")
 app.include_router(roteador_usuarios)  # antes da rota coringa do front, no fim do arquivo
+
+
+@app.exception_handler(banco.BancoIndisponivel)
+def banco_indisponivel(_: Request, exc: banco.BancoIndisponivel) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": {"erros": [
+        "O banco de dados (PostgreSQL) não respondeu. Ele está no ar e ASSESSOR_DATABASE_URL está certo?"
+    ], "campos": {}}})
 
 
 def pasta_modelos() -> Path:
@@ -183,7 +189,7 @@ def serializar(res: Recomendacao, avisos: list[str]) -> dict[str, Any]:
 
 @app.post("/api/recomendacao")
 def recomendacao(body: Respostas, usuario: dict[str, Any] = Depends(usuario_logado),
-                 con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+                 con: banco.Conexao = Depends(conexao)) -> dict[str, Any]:
     """Só para quem fez login (D40); cada resultado fica salvo e ligado a quem o pediu."""
     q, erros = ui.montar_questionario(body.respostas)
     if erros:
@@ -199,7 +205,7 @@ def recomendacao(body: Respostas, usuario: dict[str, Any] = Depends(usuario_loga
 
 @app.get("/api/recomendacoes/ultima")
 def ultima_recomendacao(usuario: dict[str, Any] = Depends(usuario_logado),
-                        con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any] | None:
+                        con: banco.Conexao = Depends(conexao)) -> dict[str, Any] | None:
     """Ao entrar em outro aparelho, a pessoa reencontra a carteira que já tinha gerado."""
     return banco.ultima_recomendacao(con, usuario["id"])
 

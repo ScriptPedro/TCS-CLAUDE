@@ -526,8 +526,10 @@ LOG_FORMAT: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 # ---------------------------------------------------------------------------
 # Usuários do sistema (D40) — cadastro, login e gerenciamento pela API
 # ---------------------------------------------------------------------------
-# Banco SQLite local; ASSESSOR_DB aponta para outro arquivo (testes, contêiner)
-USUARIOS_DB_FILE: Path = DATA_DIR / "usuarios.db"
+# PostgreSQL (D41). ASSESSOR_DATABASE_URL aponta para outro servidor (contêiner, testes).
+# O padrão é o Postgres local de desenvolvimento descrito no README (senha só para uso local).
+DATABASE_URL: str = "postgresql://assessor:assessor@localhost:5432/assessor"
+DATABASE_TIMEOUT_S: int = 5
 # Idade: inteiro de maioridade (18, como no questionário) até o maior registro verificado
 # da história (Jeanne Calment, 122 anos e 164 dias, morta em 1997)
 IDADE_MINIMA: int = 18

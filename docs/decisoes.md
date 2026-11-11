@@ -479,6 +479,9 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
 
 ## D40 — Usuários do sistema: banco SQL, login e gerenciamento com soft delete
 
+> O banco começou em SQLite. Ele passou a ser **PostgreSQL** na D41. O resto desta decisão
+> (soft delete, sessões, papéis, validações) continua valendo.
+
 - **Contexto:** o front React passa a exigir login. É preciso cadastrar quem usa o sistema, separar
   administradores de usuários comuns e excluir contas sem apagar o histórico.
 - **Decisão:**
@@ -537,5 +540,47 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
     seria bloqueado junto).
 - **Limitações:** o bloqueio por conta permite que alguém trave a conta de outra pessoa errando a
   senha de propósito (o bloqueio é curto por isso). Não há recuperação de senha por e-mail nem
-  confirmação de e-mail. No Docker (D39), o banco fica no volume `assessor-usuarios`, que sobrevive
-  à recriação do contêiner.
+  confirmação de e-mail.
+
+## D41 — PostgreSQL no lugar do SQLite para os usuários
+
+- **Contexto:** o grupo pediu um banco de verdade para os usuários (D40), igual ao que um banco usaria
+  em produção, em vez de um arquivo SQLite dentro do contêiner.
+- **Decisão:**
+  - **PostgreSQL 16** com **psycopg 3** (`psycopg[binary]`, sem compilar nada no Windows). O SQL
+    continua escrito à mão em `api/banco.py`, agora com `%s` nos parâmetros.
+  - **Tipos do Postgres:**
+    - `GENERATED ALWAYS AS IDENTITY` nos ids e `TIMESTAMPTZ` nas datas (a API devolve texto ISO 8601).
+    - `JSONB` nas respostas e no resultado das recomendações.
+    - `CHAR(11)` com uma regex de 11 dígitos no CPF, e um `CHECK` de e-mail em minúsculas.
+    - `ILIKE` na busca, com `%` e `_` digitados tratados como texto.
+  - **Esquema:** criado na primeira conexão de cada processo (`CREATE ... IF NOT EXISTS`), com uma
+    trava (`pg_advisory_xact_lock`) para dois processos não criarem as tabelas ao mesmo tempo. Não há
+    ferramenta de migração.
+  - **Corrida no cadastro:** se duas requisições gravarem o mesmo CPF ao mesmo tempo, o `INSERT` roda
+    num *savepoint*. A violação de unicidade vira a mesma mensagem de "CPF já cadastrado".
+  - **Endereço:** vem de `ASSESSOR_DATABASE_URL`. O padrão (`config.DATABASE_URL`) é o Postgres local
+    do README (`docker run ... postgres:16.4-alpine`), com uma senha que só vale para desenvolvimento.
+    Se o banco estiver fora do ar, a API responde 503 com uma mensagem clara. Pedidos sem token
+    recebem 401 antes de abrir conexão.
+  - **Docker/Terraform (D39):** um contêiner `assessor-postgres` na rede interna, sem porta aberta no
+    computador. Os dados ficam no volume `assessor-postgres`, que sobrevive a `apply` e `destroy`. A
+    senha vem da variável `senha_postgres`.
+  - **Testes:** a fixture `banco_postgres` (`tests/conftest.py`) usa o servidor de
+    `ASSESSOR_TEST_DATABASE_URL` ou sobe um Postgres temporário com o `pytest-postgresql`, se houver
+    `pg_ctl` na máquina. Ela limpa as tabelas antes de cada teste. Sem Postgres, só os testes que
+    precisam do banco são pulados, com o motivo. As validações e a recusa sem token rodam sempre.
+- **Alternativas descartadas:**
+  - **Manter o SQLite** (é um arquivo local, não aguenta bem vários processos e não representa um
+    banco de produção).
+  - **SQLAlchemy para rodar os testes em SQLite** (os testes não exercitariam o Postgres de verdade, e
+    os dois dialetos divergem em tipos e em `RETURNING`).
+  - **Pool de conexões** (`psycopg_pool`; é uma dependência a mais e o volume de um projeto acadêmico
+    não precisa).
+  - **Cloud SQL no GCP** (não tem cota grátis; veja a limitação).
+- **Limitações:**
+  - No **Cloud Run (D38)** não há Postgres incluído. Para o login funcionar lá, é preciso apontar
+    `ASSESSOR_DATABASE_URL` para um Postgres externo (ex.: um serviço com camada grátis), e isso não
+    está no Terraform do GCP.
+  - O Postgres não roda como **root**: em contêineres de CI que rodam como root, suba o servidor com
+    outro usuário e use `ASSESSOR_TEST_DATABASE_URL`.

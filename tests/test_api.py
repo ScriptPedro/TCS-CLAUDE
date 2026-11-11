@@ -45,9 +45,9 @@ def models_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
 USUARIA = {"nome": "Ana Souza", "cpf": "111.444.777-35", "email": "ana@exemplo.com", "idade": 40, "senha": "senhaForte1"}
 
 
-def _logado(monkeypatch: pytest.MonkeyPatch, pasta: Path) -> TestClient:
-    """Cliente com banco de usuários próprio e já logado: a recomendação exige login (D40)."""
-    monkeypatch.setenv("ASSESSOR_DB", str(pasta / "usuarios.db"))
+def _logado(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> TestClient:
+    """Cliente já logado num banco de testes vazio: a recomendação exige login (D40)."""
+    request.getfixturevalue("banco_postgres")  # pula o teste se não houver Postgres para testes
     monkeypatch.setattr(config, "SCRYPT_N", 2**8)
     c = TestClient(api.app)
     token = c.post("/api/auth/registro", json=USUARIA).json()["token"]
@@ -56,9 +56,16 @@ def _logado(monkeypatch: pytest.MonkeyPatch, pasta: Path) -> TestClient:
 
 
 @pytest.fixture
-def client(models_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client(models_dir: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    """Sem login: questionário e saúde são públicos e não precisam do banco."""
     monkeypatch.setenv("ASSESSOR_MODELS_DIR", str(models_dir))
-    return _logado(monkeypatch, tmp_path)
+    return TestClient(api.app)
+
+
+@pytest.fixture
+def logado(models_dir: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> TestClient:
+    monkeypatch.setenv("ASSESSOR_MODELS_DIR", str(models_dir))
+    return _logado(monkeypatch, request)
 
 
 def test_questionario_tem_todas_as_perguntas(client: TestClient) -> None:
@@ -76,8 +83,8 @@ def test_saude_com_e_sem_modelos(client: TestClient, tmp_path: Path, monkeypatch
     assert client.get("/api/saude").json()["modelos"] is False
 
 
-def test_recomendacao_moderada(client: TestClient) -> None:
-    r = client.post("/api/recomendacao", json={"respostas": MODERADO})
+def test_recomendacao_moderada(logado: TestClient) -> None:
+    r = logado.post("/api/recomendacao", json={"respostas": MODERADO})
     assert r.status_code == 200
     res = r.json()
     assert sum(c["pct"] for c in res["carteira"]) == 100
@@ -94,36 +101,36 @@ def test_recomendacao_moderada(client: TestClient) -> None:
     assert "Raio X" in res["calculo"]["rotulo_afinidade"] and len(res["calculo"]["passos"]) == 3
 
 
-def test_recomendacao_endividada_ativa_modo_protecao(client: TestClient) -> None:
-    res = client.post("/api/recomendacao", json={"respostas": ENDIVIDADO}).json()
+def test_recomendacao_endividada_ativa_modo_protecao(logado: TestClient) -> None:
+    res = logado.post("/api/recomendacao", json={"respostas": ENDIVIDADO}).json()
     assert res["saude"]["modo_protecao"] is True
     pct = {c["classe"]: c["pct"] for c in res["carteira"]}
     assert pct["acoes"] == 0 and pct["multimercado"] == 0
 
 
-def test_respostas_invalidas_viram_422(client: TestClient) -> None:
-    r = client.post("/api/recomendacao", json={"respostas": {**MODERADO, "idade": 12}})
+def test_respostas_invalidas_viram_422(logado: TestClient) -> None:
+    r = logado.post("/api/recomendacao", json={"respostas": {**MODERADO, "idade": 12}})
     assert r.status_code == 422
     assert r.json()["detail"]["erros"]
 
 
-def test_sem_modelos_vira_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sem_modelos_vira_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
     monkeypatch.setenv("ASSESSOR_MODELS_DIR", str(tmp_path))
-    r = _logado(monkeypatch, tmp_path).post("/api/recomendacao", json={"respostas": MODERADO})
+    r = _logado(monkeypatch, request).post("/api/recomendacao", json={"respostas": MODERADO})
     assert r.status_code == 503
 
 
 def test_recomendacao_exige_login(client: TestClient) -> None:
-    r = TestClient(api.app).post("/api/recomendacao", json={"respostas": MODERADO})
-    assert r.status_code == 401
-    assert TestClient(api.app).get("/api/recomendacoes/ultima").status_code == 401
+    """Sem token, 401 antes de abrir o banco: vale mesmo sem Postgres."""
+    assert client.post("/api/recomendacao", json={"respostas": MODERADO}).status_code == 401
+    assert client.get("/api/recomendacoes/ultima").status_code == 401
 
 
-def test_recomendacao_fica_salva_para_quem_pediu(client: TestClient) -> None:
-    assert client.get("/api/recomendacoes/ultima").json() is None
-    client.post("/api/recomendacao", json={"respostas": MODERADO})
-    res = client.post("/api/recomendacao", json={"respostas": ENDIVIDADO}).json()
-    ultima = client.get("/api/recomendacoes/ultima").json()
+def test_recomendacao_fica_salva_para_quem_pediu(logado: TestClient) -> None:
+    assert logado.get("/api/recomendacoes/ultima").json() is None
+    logado.post("/api/recomendacao", json={"respostas": MODERADO})
+    res = logado.post("/api/recomendacao", json={"respostas": ENDIVIDADO}).json()
+    ultima = logado.get("/api/recomendacoes/ultima").json()
     assert ultima["resultado"] == res and ultima["respostas"]["divida_cara"] == "sim"
     assert ultima["perfil"] == res["perfil"]["efetivo"]
     # outra pessoa não vê a recomendação de ninguém

@@ -1,4 +1,7 @@
-"""Usuários (D40): validações de cadastro, banco SQLite, login e gerenciamento com soft delete."""
+"""Usuários (D40, D41): validações de cadastro, banco PostgreSQL, login e gerenciamento com soft delete.
+
+Os testes de banco e de API usam o Postgres de testes do conftest (temporário ou o de
+ASSESSOR_TEST_DATABASE_URL); sem nenhum, são pulados. As validações rodam sempre."""
 
 from __future__ import annotations
 
@@ -6,6 +9,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from psycopg import errors
 
 from api import banco
 from api import main as api
@@ -28,14 +32,12 @@ def scrypt_rapido(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    caminho = tmp_path / "usuarios.db"
-    monkeypatch.setenv("ASSESSOR_DB", str(caminho))
-    return caminho
+def db(banco_postgres: str) -> str:
+    return banco_postgres
 
 
 @pytest.fixture
-def client(db: Path) -> TestClient:
+def client(db: str) -> TestClient:
     return TestClient(api.app)
 
 
@@ -124,17 +126,16 @@ def test_senha(senha: str, ok: bool) -> None:
 # ---------------------------------------------------------------------------
 # Banco
 # ---------------------------------------------------------------------------
-def test_senha_nunca_fica_em_texto_puro(db: Path) -> None:
+def test_senha_nunca_fica_em_texto_puro(db: str) -> None:
     with banco.conectar() as con:
         banco.criar_usuario(con, nome="Ana Souza", cpf="11144477735", email="a@b.com", idade=30, senha="senhaForte1")
-        guardado = con.execute("SELECT senha_hash FROM usuarios").fetchone()[0]
+        guardado = con.execute("SELECT senha_hash FROM usuarios").fetchone()["senha_hash"]
     assert "senhaForte1" not in guardado and guardado.startswith("scrypt$")
     assert banco.conferir_senha("senhaForte1", guardado) and not banco.conferir_senha("errada123", guardado)
 
 
-def test_banco_recusa_idade_fora_do_limite_mesmo_sem_a_api(db: Path) -> None:
-    import sqlite3
-    with pytest.raises(sqlite3.IntegrityError), banco.conectar() as con:
+def test_banco_recusa_idade_fora_do_limite_mesmo_sem_a_api(db: str) -> None:
+    with pytest.raises(errors.CheckViolation), banco.conectar() as con:
         banco.criar_usuario(con, nome="Ana Souza", cpf="11144477735", email="a@b.com", idade=123, senha="senhaForte1")
 
 
@@ -237,14 +238,14 @@ def test_troca_de_senha_derruba_sessoes(client: TestClient, admin: dict[str, str
     assert client.post("/api/auth/login", json={"login": "ana@exemplo.com", "senha": "novaSenha9"}).status_code == 200
 
 
-def test_soft_delete_e_restauracao(client: TestClient, admin: dict[str, str], db: Path) -> None:
+def test_soft_delete_e_restauracao(client: TestClient, admin: dict[str, str], db: str) -> None:
     corpo = client.post("/api/auth/registro", json=ANA).json()
     ana_id, ana = corpo["usuario"]["id"], _cabecalho(corpo["token"])
 
     assert client.delete(f"/api/usuarios/{ana_id}", headers=admin).status_code == 204
     # a linha continua no banco, só marcada
     with banco.conectar() as con:
-        assert con.execute("SELECT excluido_em FROM usuarios WHERE id = ?", (ana_id,)).fetchone()[0]
+        assert con.execute("SELECT excluido_em FROM usuarios WHERE id = %s", (ana_id,)).fetchone()["excluido_em"]
     assert client.get("/api/auth/eu", headers=ana).status_code == 401  # sessão encerrada
     assert client.post("/api/auth/login", json={"login": "ana@exemplo.com", "senha": ANA["senha"]}).status_code == 401
     assert ana_id not in [u["id"] for u in client.get("/api/usuarios", headers=admin).json()]
@@ -275,7 +276,7 @@ def test_usuario_inexistente(client: TestClient, admin: dict[str, str]) -> None:
     assert client.delete("/api/usuarios/999", headers=admin).status_code == 404
 
 
-def test_cli_criar_admin(db: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_criar_admin(db: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     respostas = iter([ADMIN["nome"], ADMIN["cpf"], ADMIN["email"], str(ADMIN["idade"])])
     monkeypatch.setattr("builtins.input", lambda _: next(respostas))
     monkeypatch.setattr(usuarios.getpass, "getpass", lambda _: ADMIN["senha"])
@@ -368,9 +369,9 @@ def test_exclusao_definitiva_so_depois_do_soft_delete(client: TestClient, admin:
 
     with banco.conectar() as con:
         for tabela in ("usuarios", "sessoes", "recomendacoes"):
-            assert con.execute(f"SELECT count(*) FROM {tabela} WHERE {'id' if tabela == 'usuarios' else 'usuario_id'} = ?",
-                               (ana_id,)).fetchone()[0] == 0
-        assert [r[0] for r in con.execute("SELECT login FROM tentativas_login")] == ["email:ninguem@exemplo.com"]
+            assert con.execute(f"SELECT count(*) AS n FROM {tabela} WHERE {'id' if tabela == 'usuarios' else 'usuario_id'} = %s",
+                               (ana_id,)).fetchone()["n"] == 0
+        assert [r["login"] for r in con.execute("SELECT login FROM tentativas_login")] == ["email:ninguem@exemplo.com"]
     assert client.get(f"/api/usuarios/{ana_id}", headers=admin).status_code == 404
     # sem rastro: o mesmo CPF pode criar uma conta nova
     assert client.post("/api/auth/registro", json=ANA).status_code == 201
@@ -379,3 +380,9 @@ def test_exclusao_definitiva_so_depois_do_soft_delete(client: TestClient, admin:
 def test_usuario_comum_nao_apaga_definitivo(client: TestClient) -> None:
     token = client.post("/api/auth/registro", json=ANA).json()["token"]
     assert client.delete("/api/usuarios/1/definitivo", headers=_cabecalho(token)).status_code == 403
+
+
+def test_banco_fora_do_ar_vira_503(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASSESSOR_DATABASE_URL", "postgresql://ninguem@127.0.0.1:1/nada")
+    r = TestClient(api.app).post("/api/auth/login", json={"login": "a@b.com", "senha": "senhaForte1"})
+    assert r.status_code == 503 and "PostgreSQL" in r.json()["detail"]["erros"][0]

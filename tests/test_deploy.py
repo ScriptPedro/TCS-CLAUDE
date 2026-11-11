@@ -44,10 +44,15 @@ def test_dockerfile_aponta_para_a_pasta_montada_pelo_terraform():
     assert "requirements-deploy.txt" in dockerfile
 
 
-def test_banco_de_usuarios_fica_num_volume_no_docker():
-    """D40: recriar o contêiner não pode apagar os usuários."""
-    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+def test_postgres_dos_usuarios_no_docker():
+    """D41: a API aponta para o contêiner do Postgres, e os dados dele ficam num volume."""
     docker = (ROOT / "infra" / "docker" / "main.tf").read_text(encoding="utf-8")
-    assert "ASSESSOR_DB=/app/data/usuarios.db" in dockerfile
-    assert re.search(r'volume_name\s*=\s*local\.volume_usuarios\s*\n\s*container_path\s*=\s*"/app/data"', docker)
-    assert "ASSESSOR_DB=/app/data/usuarios.db" in docker
+    assert 'resource "docker_container" "postgres"' in docker
+    assert "ASSESSOR_DATABASE_URL=postgresql://assessor:${var.senha_postgres}@${docker_container.postgres.name}:5432/assessor" in docker
+    assert re.search(r'volume_name\s*=\s*local\.volume_postgres\s*\n\s*container_path\s*=\s*"/var/lib/postgresql/data"', docker)
+    assert "ports" not in docker.split('resource "docker_container" "postgres"')[1].split("resource ")[0]  # sem porta aberta
+
+
+def test_imagem_tem_o_driver_do_postgres():
+    deploy = _pins(ROOT / "requirements-deploy.txt")
+    assert "psycopg[binary]" in deploy

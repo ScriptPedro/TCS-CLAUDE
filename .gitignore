@@ -2,9 +2,6 @@
 data/raw/*
 data/processed/*
 !data/**/.gitkeep
-# Banco de usuários (D40): tem dados pessoais (CPF, e-mail) — nunca versionar
-*.db
-*.db-journal
 
 # Modelos treinados
 models/*
