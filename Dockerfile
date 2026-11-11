@@ -41,7 +41,8 @@ COPY app/ app/
 COPY api/ api/
 COPY --from=front /front/dist frontend/dist
 
-RUN useradd --create-home --uid 1000 assessor
+RUN useradd --create-home --uid 1000 assessor \
+    && mkdir -p data && chown assessor data   # banco SQLite de usuários (D40)
 USER assessor
 
 EXPOSE 8080

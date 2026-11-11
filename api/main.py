@@ -6,6 +6,7 @@ Expõe o mesmo fluxo do app Streamlit, sem duplicar lógica: as perguntas vêm d
     GET  /api/saude          → os modelos estão carregados?
     GET  /api/questionario   → etapas, perguntas, opções e respostas padrão
     POST /api/recomendacao   → respostas do formulário → recomendação completa
+    /api/auth/*, /api/usuarios → cadastro, login e gerenciamento de usuários (api/usuarios.py, D40)
 
 Uso (na raiz do projeto):
     uvicorn api.main:app --reload --port 8000
@@ -26,6 +27,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from api.usuarios import roteador as roteador_usuarios
 from app import components as ui
 from src import config
 from src import portfolio as pf
@@ -38,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FRONT_DIST = ROOT / "frontend" / "dist"
 
 app = FastAPI(title="Assessor de Investimentos Virtual", version="1.0.0")
+app.include_router(roteador_usuarios)  # antes da rota coringa do front, no fim do arquivo
 
 
 def pasta_modelos() -> Path:

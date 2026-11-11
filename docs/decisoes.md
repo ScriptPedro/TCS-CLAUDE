@@ -476,3 +476,49 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
   - **Túnel com conta do Cloudflare e domínio próprio** (dá um endereço fixo, mas exige conta e domínio).
 - **Limitação:** o app fica no ar apenas enquanto o computador estiver ligado. O link do túnel muda a
   cada reinício e depende de um serviço gratuito sem garantia de disponibilidade.
+
+## D40 — Usuários do sistema: banco SQL, login e gerenciamento com soft delete
+
+- **Contexto:** o front React passa a exigir login. É preciso cadastrar quem usa o sistema, separar
+  administradores de usuários comuns e excluir contas sem apagar o histórico.
+- **Decisão:**
+  - **SQLite com SQL puro** (`sqlite3` da biblioteca padrão), em `api/banco.py`. O arquivo é
+    `data/usuarios.db` (fora do Git) ou o que `ASSESSOR_DB` indicar. As tabelas `usuarios` e
+    `sessoes` são criadas na primeira conexão. Não entra nenhuma dependência nova, então
+    `requirements-deploy.txt` e a imagem não mudam.
+  - **Soft delete:** excluir só preenche `excluido_em` e encerra as sessões da pessoa. A conta some
+    das listagens e não faz login, mas a linha continua no banco e o administrador pode restaurá-la.
+    CPF e e-mail são únicos **inclusive entre excluídos**: quem tem conta desativada pede a
+    reativação, em vez de criar uma segunda conta com o mesmo CPF.
+  - **Senhas** com `hashlib.scrypt` e sal aleatório (custo em `config.SCRYPT_*`). **Sessões** usam um
+    token aleatório opaco (`secrets`). O banco guarda só o hash SHA-256 do token, que expira em
+    `config.SESSAO_HORAS` horas. Logout, troca de senha e exclusão derrubam as sessões.
+  - **Papéis:** `usuario` e `admin`. O cadastro pela tela cria sempre `usuario`. O primeiro admin é
+    criado pela linha de comando (`python -m api.usuarios criar-admin`). Um admin não pode se excluir
+    nem tirar o próprio acesso de admin, então sempre resta ao menos um.
+  - **Validação no servidor** (`api/validacao.py`, funções puras):
+    - CPF: 11 dígitos, sem todos iguais, com dígitos verificadores conferidos. Aceita com ou sem
+      máscara.
+    - Nome: nome e sobrenome, só letras (com acento), espaço, apóstrofo e hífen.
+    - Idade: inteiro de 1 a **122**, o maior registro verificado da história (Jeanne Calment,
+      122 anos e 164 dias). Recusa sinal, decimal, notação científica e `bool`. O banco repete o
+      limite com um `CHECK`.
+    - E-mail: formato válido, gravado em minúsculas.
+    - Senha: 8 a 128 caracteres, com letras e números.
+
+    As mensagens são em português e saem **por campo** (`detail.campos`).
+  - **No front** os campos só filtram o que pode ser digitado: a idade aceita só algarismos e ignora
+    valores acima do limite, o CPF ganha máscara e o nome não aceita números nem símbolos. Os
+    limites vêm de `GET /api/auth/regras`, para não duplicar regra em TypeScript.
+  - **Privacidade:** a listagem do admin mostra o CPF mascarado (`***.456.789-**`). O CPF completo só
+    aparece para o próprio usuário e na ficha de edição. O CPF não muda depois do cadastro.
+- **Alternativas descartadas:**
+  - **SQLAlchemy/ORM** (dependência a mais para duas tabelas; o SQL puro fica visível para a banca).
+  - **JWT** (exige guardar um segredo e não dá para revogar no logout sem uma lista de bloqueio; o
+    token opaco no banco resolve as duas coisas).
+  - **bcrypt/passlib** (dependência a mais; o scrypt da biblioteca padrão é recomendado pela OWASP).
+  - **Exclusão física** (perde o histórico e impede a restauração).
+  - **Unicidade de CPF só entre ativos** (permitiria duas contas da mesma pessoa).
+- **Limitação:** o SQLite fica dentro do contêiner. No Docker (D39), recriar o contêiner apaga os
+  usuários, a menos que `data/` seja montada como volume. Não há limite de tentativas de login,
+  recuperação de senha nem confirmação de e-mail.

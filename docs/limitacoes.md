@@ -55,8 +55,13 @@
 
 ## 5. Ética e LGPD (Lei 13.709/2018)
 
-- **Minimização:** o app só pergunta o que é usado. **Não pergunta sexo**, nome, CPF nem contato.
-- **Sem armazenamento:** as respostas ficam apenas na sessão do navegador (`st.session_state`, em
+- **Minimização:** o questionário só pergunta o que é usado. **Não pergunta sexo**, nome, CPF nem contato.
+- **Cadastro de usuários (D40):** o login do front React guarda nome, CPF, e-mail e idade em
+  `data/usuarios.db` (SQLite, fora do Git). Esses dados **não entram nos modelos** nem no questionário.
+  As senhas ficam só como hash scrypt com sal. A listagem do administrador mascara o CPF. A exclusão é
+  lógica (soft delete) para permitir restaurar a conta. Um pedido de eliminação definitiva pela LGPD
+  (art. 18, VI) ainda exigiria apagar a linha manualmente: não há tela para isso.
+- **Sem armazenamento das respostas:** as respostas ficam apenas na sessão do navegador (`st.session_state`, em
   memória) e somem ao fechar a página. Os logs registram perfil, cluster e carteira, sem nenhum dado
   identificável.
 - **Transparência e explicabilidade (art. 20, revisão de decisões automatizadas):** cada resultado mostra

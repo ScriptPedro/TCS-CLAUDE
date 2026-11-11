@@ -522,3 +522,25 @@ VIZ_DPI: int = 150
 # ---------------------------------------------------------------------------
 LOG_LEVEL: str = "INFO"
 LOG_FORMAT: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+
+# ---------------------------------------------------------------------------
+# Usuários do sistema (D40) — cadastro, login e gerenciamento pela API
+# ---------------------------------------------------------------------------
+# Banco SQLite local; ASSESSOR_DB aponta para outro arquivo (testes, contêiner)
+USUARIOS_DB_FILE: Path = DATA_DIR / "usuarios.db"
+# Idade: inteiro positivo até o maior registro verificado da história
+# (Jeanne Calment, 122 anos e 164 dias, morta em 1997)
+IDADE_MINIMA: int = 1
+IDADE_MAXIMA: int = 122
+NOME_MIN_CARACTERES: int = 3
+NOME_MAX_CARACTERES: int = 100
+SENHA_MIN_CARACTERES: int = 8
+SENHA_MAX_CARACTERES: int = 128
+EMAIL_MAX_CARACTERES: int = 254
+# Sessão: token opaco aleatório; o banco guarda só o hash SHA-256 dele
+SESSAO_HORAS: int = 8
+# scrypt (hashlib): custo de memória/CPU do hash de senha (≈16 MB por cálculo)
+SCRYPT_N: int = 2**14
+SCRYPT_R: int = 8
+SCRYPT_P: int = 1
+PAPEIS_USUARIO: tuple[str, ...] = ("usuario", "admin")

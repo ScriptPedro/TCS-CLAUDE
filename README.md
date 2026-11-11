@@ -37,13 +37,19 @@ Projeto final de IA Aplicada (BFSI). O usuário responde a um questionário e re
 
 ```
 assessor-investimentos/
+├── api/
+│   ├── main.py            # FastAPI do front React (questionário, recomendação)
+│   ├── usuarios.py        # login, cadastro e gerenciamento de usuários (D40)
+│   ├── banco.py           # banco SQLite dos usuários (SQL puro, soft delete, sessões)
+│   └── validacao.py       # validação de CPF, nome, idade, e-mail e senha
 ├── app/
 │   ├── main.py            # Etapa 7 — Streamlit (layout e navegação)
 │   └── components.py      # validação do formulário, gráfico (testáveis sem Streamlit)
 ├── data/raw/              # train_ver2.csv e microdados do Raio X (não versionados)
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
+├── data/usuarios.db       # banco de usuários do front React (criado sozinho, não versionado)
 ├── docs/
-│   ├── decisoes.md        # D1–D39: cada decisão técnica e as alternativas descartadas
+│   ├── decisoes.md        # D1–D40: cada decisão técnica e as alternativas descartadas
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
@@ -152,6 +158,17 @@ uvicorn api.main:app --reload --port 8000      # terminal 1: API
 cd frontend; npm install; npm run dev          # terminal 2: front em http://localhost:5173
 ```
 
+**Login.** O front abre numa tela de entrada (e-mail ou CPF + senha) com a aba **Criar conta**.
+O cadastro pela tela cria sempre um usuário comum. Crie o primeiro administrador pela linha de comando:
+
+```powershell
+python -m api.usuarios criar-admin             # pergunta nome, CPF, e-mail, idade e senha
+```
+
+O administrador encontra **Conta → Gerenciar usuários**, onde pode cadastrar, editar, excluir
+(soft delete) e restaurar contas. O banco é `data/usuarios.db`. Para usar outro arquivo, defina
+`ASSESSOR_DB`. No contêiner, rode o mesmo comando com `docker exec -it <contêiner> python -m api.usuarios criar-admin`.
+
 Para apresentar com um único servidor: `cd frontend; npm run build` e depois só a API
 (`uvicorn api.main:app --port 8000`), que passa a servir o front em http://localhost:8000.
 
@@ -179,7 +196,7 @@ sintéticos com 10 mil clientes, o pipeline completo levou ~21 s.
 
 ## Documentação
 
-- [Decisões técnicas (D1–D39)](docs/decisoes.md)
+- [Decisões técnicas (D1–D40)](docs/decisoes.md)
 - [Deploy com Terraform no Docker local](infra/docker/README.md)
 - [Deploy com Terraform no Google Cloud (cota grátis)](infra/gcp/README.md)
 - [Limitações, vieses, ética e próximos passos](docs/limitacoes.md)

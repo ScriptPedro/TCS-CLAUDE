@@ -24,3 +24,8 @@ export const lerRespostas = () => ler<Respostas>(CHAVE_RESPOSTAS);
 export const salvarRespostas = (r: Respostas | null) => gravar(CHAVE_RESPOSTAS, r);
 export const lerResultado = () => ler<Resultado>(CHAVE_RESULTADO);
 export const salvarResultado = (r: Resultado | null) => gravar(CHAVE_RESULTADO, r);
+
+// Token da sessão de login: sem ele o app volta para a tela de entrada
+const CHAVE_TOKEN = "assessor.token";
+export const lerToken = () => ler<string>(CHAVE_TOKEN);
+export const salvarToken = (t: string | null) => gravar(CHAVE_TOKEN, t);

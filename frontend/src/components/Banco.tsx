@@ -5,13 +5,14 @@ import Icone, { type NomeIcone } from "./Icone";
 import Notas from "./Notas";
 
 interface Props {
+  /** Primeiro nome de quem entrou; o resto da tela é cenário. */
+  cliente: string;
   resultado: Resultado | null;
   onAssessor: (abrirResultado: boolean) => void;
   onSimulado: (recurso: string) => void;
 }
 
-// Tudo nesta tela é cenário fictício do app do banco; só o card do assessor leva a uma feature real
-const CLIENTE = "Ana";
+// Tudo nesta tela (fora o nome de quem entrou) é cenário fictício; só o card do assessor leva a uma feature real
 const SALDO = 4218.37;
 const INVESTIDO = 12540.0;
 const FATURA = { valor: 1326.9, vence: "10 nov", limite: 6000, usado: 2480 };
@@ -34,7 +35,7 @@ const EXTRATO = [
 
 const reais = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function Banco({ resultado, onAssessor, onSimulado }: Props) {
+export default function Banco({ cliente, resultado, onAssessor, onSimulado }: Props) {
   const [oculto, setOculto] = useState(false);
   const valor = (v: number) => (oculto ? "R$ ••••" : reais(v));
 
@@ -42,9 +43,9 @@ export default function Banco({ resultado, onAssessor, onSimulado }: Props) {
     <div className="tela-banco">
       <header className="banco-topo">
         <div className="banco-saudacao">
-          <span className="avatar" aria-hidden>{CLIENTE[0]}</span>
+          <span className="avatar" aria-hidden>{cliente[0]?.toUpperCase()}</span>
           <div>
-            <p className="banco-ola">Olá, {CLIENTE}</p>
+            <p className="banco-ola">Olá, {cliente}</p>
             <p className="banco-agencia">Ag 0001 · Cc 12345-6</p>
           </div>
         </div>
