@@ -30,6 +30,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     MPLCONFIGDIR=/tmp/matplotlib \
     NUMBA_CACHE_DIR=/tmp/numba \
     ASSESSOR_MODELS_DIR=/models \
+    ASSESSOR_DB=/app/data/usuarios.db \
     PORT=8080
 
 WORKDIR /app
@@ -42,7 +43,7 @@ COPY api/ api/
 COPY --from=front /front/dist frontend/dist
 
 RUN useradd --create-home --uid 1000 assessor \
-    && mkdir -p data && chown assessor data   # banco SQLite de usuários (D40)
+    && mkdir -p data && chown assessor data   # banco SQLite de usuários (D40); monte um volume aqui
 USER assessor
 
 EXPOSE 8080

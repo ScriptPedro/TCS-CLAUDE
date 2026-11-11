@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { buscarRegras, quandoSessaoExpirar, quemSouEu, sair } from "./api";
+import { buscarRegras, buscarUltimaRecomendacao, quandoSessaoExpirar, quemSouEu, sair } from "./api";
 import { lerResultado, lerToken, salvarRespostas, salvarResultado, salvarToken } from "./armazenamento";
 import Assessor, { type TelaAssessor } from "./components/Assessor";
 import Banco from "./components/Banco";
@@ -47,6 +47,15 @@ export default function App() {
     setAba("inicio");
   }, []);
 
+  // A última carteira vem do servidor, ligada à conta: aparece em qualquer aparelho em que a pessoa entrar
+  const carregarUltima = useCallback(async () => {
+    const salva = await buscarUltimaRecomendacao().catch(() => null);
+    if (!salva) return;
+    setResultado(salva.resultado);
+    salvarResultado(salva.resultado);
+    salvarRespostas(salva.respostas);
+  }, []);
+
   useEffect(() => {
     quandoSessaoExpirar(() => {
       encerrar();
@@ -55,11 +64,14 @@ export default function App() {
     buscarRegras().then(setRegras).catch(() => setRegras(null));
     if (lerToken()) {
       quemSouEu()
-        .then(setUsuario)
+        .then((u) => {
+          setUsuario(u);
+          return carregarUltima();
+        })
         .catch(() => salvarToken(null))
         .finally(() => setVerificando(false));
     }
-  }, [encerrar]);
+  }, [encerrar, carregarUltima]);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -69,6 +81,12 @@ export default function App() {
     salvarToken(token);
     setUsuario(u);
     setAba("inicio");
+    void carregarUltima();
+  };
+
+  const novaSessao = ({ token, usuario: u }: Sessao) => {
+    salvarToken(token);
+    setUsuario(u);
   };
 
   const sairDaConta = async () => {
@@ -110,7 +128,10 @@ export default function App() {
           onSair={() => setAba("inicio")}
         />
       )}
-      {aba === "conta" && <Conta usuario={usuario} onUsuarios={() => setAba("usuarios")} onSair={sairDaConta} />}
+      {aba === "conta" && (
+        <Conta usuario={usuario} regras={regras} onAtualizado={setUsuario} onNovaSessao={novaSessao}
+          onUsuarios={() => setAba("usuarios")} onSair={sairDaConta} />
+      )}
       {aba === "usuarios" && usuario.papel === "admin" && (
         <Usuarios eu={usuario} regras={regras} onSair={() => setAba("conta")} />
       )}

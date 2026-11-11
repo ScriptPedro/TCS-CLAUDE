@@ -441,3 +441,8 @@ th { font-weight: 700; color: var(--grafite); }
 .usuario-acoes .botao { min-height: 40px; padding: 0.4rem 1rem; }
 .botao.perigo { background: var(--erro); border-color: var(--erro); color: var(--superficie); }
 .botao.perigo:hover { background: var(--erro); opacity: 0.9; }
+.menu-conta { display: grid; gap: 0; padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.menu-conta .bloco-cabeca { min-height: 52px; padding: 0; border-bottom: 1px solid var(--linha); }
+.menu-conta .bloco-cabeca:last-child { border-bottom: 0; }
+.confirmar-apagar { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.confirmar-apagar p { flex-basis: 100%; color: var(--erro); }

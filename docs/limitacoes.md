@@ -57,10 +57,12 @@
 
 - **Minimização:** o questionário só pergunta o que é usado. **Não pergunta sexo**, nome, CPF nem contato.
 - **Cadastro de usuários (D40):** o login do front React guarda nome, CPF, e-mail e idade em
-  `data/usuarios.db` (SQLite, fora do Git). Esses dados **não entram nos modelos** nem no questionário.
-  As senhas ficam só como hash scrypt com sal. A listagem do administrador mascara o CPF. A exclusão é
-  lógica (soft delete) para permitir restaurar a conta. Um pedido de eliminação definitiva pela LGPD
-  (art. 18, VI) ainda exigiria apagar a linha manualmente: não há tela para isso.
+  `data/usuarios.db` (SQLite, fora do Git). Esses dados **não entram nos modelos**. Cada recomendação
+  pedida pelo front fica salva com as respostas do questionário (renda, dívidas, reserva), ligada à
+  conta: são **dados financeiros pessoais**. As senhas ficam só como hash scrypt com sal. A listagem do
+  administrador mascara o CPF. A exclusão comum é lógica (soft delete) para permitir restaurar a conta.
+  O pedido de eliminação da LGPD (art. 18, VI) é atendido pelo botão **Apagar definitivamente**, que
+  remove a conta e as recomendações.
 - **Sem armazenamento das respostas:** as respostas ficam apenas na sessão do navegador (`st.session_state`, em
   memória) e somem ao fechar a página. Os logs registram perfil, cluster e carteira, sem nenhum dado
   identificável.

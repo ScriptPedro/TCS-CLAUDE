@@ -9,7 +9,8 @@ para a banca acessar de outro computador ou do celular. A escolha está na decis
 Terraform ──► docker_image "assessor:local"   (build do Dockerfile: front React + API FastAPI)
           ──► docker_network "assessor"
           ──► docker_container "assessor"      http://localhost:8080
-                    └─ models/ montada somente leitura em /models
+                    ├─ models/ montada somente leitura em /models
+                    └─ volume "assessor-usuarios" em /app/data (banco de usuários, D40)
           ──► docker_container "assessor-tunel"  (opcional) https://<aleatório>.trycloudflare.com
 ```
 
@@ -53,6 +54,18 @@ O endereço `https://...trycloudflare.com` que aparecer funciona de qualquer lug
 
 Para desligar só o link: `terraform apply` (sem a variável).
 
+## Primeiro administrador
+
+O cadastro pela tela cria só usuários comuns. Depois do primeiro `apply`, crie o administrador
+dentro do contêiner:
+
+```powershell
+docker exec -it assessor python -m api.usuarios criar-admin
+```
+
+Os usuários ficam no volume `assessor-usuarios`. Eles sobrevivem a um novo `apply`, à troca do
+contêiner e ao `terraform destroy`.
+
 ## Atualizar
 
 - **Mudou o código** (`src/`, `app/`, `api/`, `frontend/`, `Dockerfile`): rode `terraform apply`. O
@@ -64,6 +77,12 @@ Para desligar só o link: `terraform apply` (sem a variável).
 
 ```powershell
 terraform destroy      # remove contêineres e rede (a imagem fica em cache para o próximo apply)
+```
+
+O volume com os usuários **não** é apagado pelo `destroy`. Para começar do zero, apague-o à mão:
+
+```powershell
+docker volume rm assessor-usuarios
 ```
 
 ## Variáveis

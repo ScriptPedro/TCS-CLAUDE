@@ -127,3 +127,17 @@ export interface DadosUsuario {
   senha: string;
   papel?: Papel;
 }
+
+export interface MeusDados {
+  nome: string;
+  email: string;
+  idade: string;
+}
+
+export interface RecomendacaoSalva {
+  id: number;
+  criada_em: string;
+  perfil: string;
+  respostas: Respostas;
+  resultado: Resultado;
+}

@@ -1,5 +1,7 @@
 import { lerToken } from "./armazenamento";
-import type { DadosUsuario, Questionario, Regras, Respostas, Resultado, Sessao, Usuario } from "./types";
+import type {
+  DadosUsuario, MeusDados, Questionario, RecomendacaoSalva, Regras, Respostas, Resultado, Sessao, Usuario,
+} from "./types";
 
 export class ErroApi extends Error {
   constructor(
@@ -50,9 +52,12 @@ export async function buscarQuestionario(): Promise<Questionario> {
   return chamar<Questionario>("/api/questionario", "GET", undefined, false);
 }
 
+// A recomendação exige login e fica salva no servidor, ligada a quem pediu (D40)
 export async function pedirRecomendacao(respostas: Respostas): Promise<Resultado> {
-  return chamar<Resultado>("/api/recomendacao", "POST", { respostas }, false);
+  return chamar<Resultado>("/api/recomendacao", "POST", { respostas });
 }
+
+export const buscarUltimaRecomendacao = () => chamar<RecomendacaoSalva | null>("/api/recomendacoes/ultima");
 
 // --- Usuários --------------------------------------------------------------
 export const buscarRegras = () => chamar<Regras>("/api/auth/regras", "GET", undefined, false);
@@ -60,6 +65,9 @@ export const entrar = (login: string, senha: string) => chamar<Sessao>("/api/aut
 export const registrar = (dados: DadosUsuario) => chamar<Sessao>("/api/auth/registro", "POST", dados, false);
 export const sair = () => chamar<null>("/api/auth/logout", "POST");
 export const quemSouEu = () => chamar<Usuario>("/api/auth/eu");
+export const editarMeusDados = (dados: MeusDados) => chamar<Usuario>("/api/auth/eu", "PUT", dados);
+export const trocarSenha = (senha_atual: string, nova_senha: string) =>
+  chamar<Sessao>("/api/auth/senha", "POST", { senha_atual, nova_senha });
 
 export const listarUsuarios = (busca: string, excluidos: boolean) =>
   chamar<Usuario[]>(`/api/usuarios?${new URLSearchParams({ busca, excluidos: String(excluidos) })}`);
@@ -68,3 +76,4 @@ export const buscarUsuario = (id: number) => chamar<Usuario>(`/api/usuarios/${id
 export const editarUsuario = (id: number, dados: DadosUsuario) => chamar<Usuario>(`/api/usuarios/${id}`, "PUT", dados);
 export const excluirUsuario = (id: number) => chamar<null>(`/api/usuarios/${id}`, "DELETE");
 export const restaurarUsuario = (id: number) => chamar<Usuario>(`/api/usuarios/${id}/restaurar`, "POST");
+export const apagarDefinitivo = (id: number) => chamar<null>(`/api/usuarios/${id}/definitivo`, "DELETE");

@@ -528,9 +528,9 @@ LOG_FORMAT: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 # ---------------------------------------------------------------------------
 # Banco SQLite local; ASSESSOR_DB aponta para outro arquivo (testes, contêiner)
 USUARIOS_DB_FILE: Path = DATA_DIR / "usuarios.db"
-# Idade: inteiro positivo até o maior registro verificado da história
-# (Jeanne Calment, 122 anos e 164 dias, morta em 1997)
-IDADE_MINIMA: int = 1
+# Idade: inteiro de maioridade (18, como no questionário) até o maior registro verificado
+# da história (Jeanne Calment, 122 anos e 164 dias, morta em 1997)
+IDADE_MINIMA: int = 18
 IDADE_MAXIMA: int = 122
 NOME_MIN_CARACTERES: int = 3
 NOME_MAX_CARACTERES: int = 100
@@ -544,3 +544,7 @@ SCRYPT_N: int = 2**14
 SCRYPT_R: int = 8
 SCRYPT_P: int = 1
 PAPEIS_USUARIO: tuple[str, ...] = ("usuario", "admin")
+# Login: depois de LOGIN_MAX_TENTATIVAS senhas erradas para o mesmo e-mail/CPF dentro de
+# LOGIN_BLOQUEIO_MINUTOS, esse login fica bloqueado até completar o intervalo sem erros
+LOGIN_MAX_TENTATIVAS: int = 5
+LOGIN_BLOQUEIO_MINUTOS: int = 15

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
-  buscarUsuario, criarUsuario, editarUsuario, ErroApi, excluirUsuario, listarUsuarios, restaurarUsuario,
+  apagarDefinitivo, buscarUsuario, criarUsuario, editarUsuario, ErroApi, excluirUsuario, listarUsuarios, restaurarUsuario,
 } from "../api";
 import type { DadosUsuario, Papel, Regras, Usuario } from "../types";
 import { CampoCpf, CampoIdade, CampoNome, CampoSenha, CampoTexto, ErrosGerais } from "./Campos";
@@ -25,6 +25,7 @@ export default function Usuarios({ eu, regras, onSair }: Props) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [editando, setEditando] = useState<Usuario | "novo" | null>(null);
   const [confirmando, setConfirmando] = useState<number | null>(null);
+  const [apagando, setApagando] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -45,6 +46,7 @@ export default function Usuarios({ eu, regras, onSair }: Props) {
       await f();
       setAviso(mensagem);
       setConfirmando(null);
+      setApagando(null);
       await carregar();
     } catch (e) {
       setErro(e instanceof ErroApi ? e.message : "Não foi possível concluir a ação.");
@@ -115,10 +117,24 @@ export default function Usuarios({ eu, regras, onSair }: Props) {
                   </div>
                   <p className="suave pequeno">{u.email} · CPF {u.cpf} · {u.idade} anos</p>
                   <div className="usuario-acoes">
-                    {u.excluido_em ? (
-                      <button className="botao" onClick={() => acao(() => restaurarUsuario(u.id), `A conta de ${u.nome} foi restaurada.`)}>
-                        Restaurar
-                      </button>
+                    {u.excluido_em && apagando === u.id ? (
+                      <div className="confirmar-apagar">
+                        <p className="pequeno">
+                          <strong>Apagar de vez a conta de {u.nome}?</strong> Os dados e as recomendações dessa pessoa
+                          saem do banco e não dá para desfazer. Use para pedidos de eliminação da LGPD.
+                        </p>
+                        <button className="botao perigo" onClick={() => acao(() => apagarDefinitivo(u.id), `A conta de ${u.nome} foi apagada definitivamente.`)}>
+                          Apagar de vez
+                        </button>
+                        <button className="botao" onClick={() => setApagando(null)}>Cancelar</button>
+                      </div>
+                    ) : u.excluido_em ? (
+                      <>
+                        <button className="botao" onClick={() => acao(() => restaurarUsuario(u.id), `A conta de ${u.nome} foi restaurada.`)}>
+                          Restaurar
+                        </button>
+                        <button className="botao" onClick={() => setApagando(u.id)}>Apagar definitivamente</button>
+                      </>
                     ) : confirmando === u.id ? (
                       <>
                         <span className="pequeno">Excluir a conta de {u.nome.split(" ")[0]}?</span>

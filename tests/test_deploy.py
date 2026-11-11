@@ -42,3 +42,12 @@ def test_dockerfile_aponta_para_a_pasta_montada_pelo_terraform():
     assert re.search(r'mount_path\s*=\s*"/models"', gcp)
     assert re.search(r'container_path\s*=\s*"/models"', docker)
     assert "requirements-deploy.txt" in dockerfile
+
+
+def test_banco_de_usuarios_fica_num_volume_no_docker():
+    """D40: recriar o contêiner não pode apagar os usuários."""
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    docker = (ROOT / "infra" / "docker" / "main.tf").read_text(encoding="utf-8")
+    assert "ASSESSOR_DB=/app/data/usuarios.db" in dockerfile
+    assert re.search(r'volume_name\s*=\s*local\.volume_usuarios\s*\n\s*container_path\s*=\s*"/app/data"', docker)
+    assert "ASSESSOR_DB=/app/data/usuarios.db" in docker

@@ -42,10 +42,23 @@ def models_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp
 
 
+USUARIA = {"nome": "Ana Souza", "cpf": "111.444.777-35", "email": "ana@exemplo.com", "idade": 40, "senha": "senhaForte1"}
+
+
+def _logado(monkeypatch: pytest.MonkeyPatch, pasta: Path) -> TestClient:
+    """Cliente com banco de usuários próprio e já logado: a recomendação exige login (D40)."""
+    monkeypatch.setenv("ASSESSOR_DB", str(pasta / "usuarios.db"))
+    monkeypatch.setattr(config, "SCRYPT_N", 2**8)
+    c = TestClient(api.app)
+    token = c.post("/api/auth/registro", json=USUARIA).json()["token"]
+    c.headers.update({"Authorization": f"Bearer {token}"})
+    return c
+
+
 @pytest.fixture
-def client(models_dir: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def client(models_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("ASSESSOR_MODELS_DIR", str(models_dir))
-    return TestClient(api.app)
+    return _logado(monkeypatch, tmp_path)
 
 
 def test_questionario_tem_todas_as_perguntas(client: TestClient) -> None:
@@ -96,5 +109,24 @@ def test_respostas_invalidas_viram_422(client: TestClient) -> None:
 
 def test_sem_modelos_vira_503(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ASSESSOR_MODELS_DIR", str(tmp_path))
-    r = TestClient(api.app).post("/api/recomendacao", json={"respostas": MODERADO})
+    r = _logado(monkeypatch, tmp_path).post("/api/recomendacao", json={"respostas": MODERADO})
     assert r.status_code == 503
+
+
+def test_recomendacao_exige_login(client: TestClient) -> None:
+    r = TestClient(api.app).post("/api/recomendacao", json={"respostas": MODERADO})
+    assert r.status_code == 401
+    assert TestClient(api.app).get("/api/recomendacoes/ultima").status_code == 401
+
+
+def test_recomendacao_fica_salva_para_quem_pediu(client: TestClient) -> None:
+    assert client.get("/api/recomendacoes/ultima").json() is None
+    client.post("/api/recomendacao", json={"respostas": MODERADO})
+    res = client.post("/api/recomendacao", json={"respostas": ENDIVIDADO}).json()
+    ultima = client.get("/api/recomendacoes/ultima").json()
+    assert ultima["resultado"] == res and ultima["respostas"]["divida_cara"] == "sim"
+    assert ultima["perfil"] == res["perfil"]["efetivo"]
+    # outra pessoa não vê a recomendação de ninguém
+    outro = TestClient(api.app)
+    token = outro.post("/api/auth/registro", json={**USUARIA, "cpf": "935.411.347-80", "email": "bruno@exemplo.com"}).json()["token"]
+    assert outro.get("/api/recomendacoes/ultima", headers={"Authorization": f"Bearer {token}"}).json() is None

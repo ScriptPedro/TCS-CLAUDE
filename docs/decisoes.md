@@ -500,9 +500,9 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
     - CPF: 11 dígitos, sem todos iguais, com dígitos verificadores conferidos. Aceita com ou sem
       máscara.
     - Nome: nome e sobrenome, só letras (com acento), espaço, apóstrofo e hífen.
-    - Idade: inteiro de 1 a **122**, o maior registro verificado da história (Jeanne Calment,
-      122 anos e 164 dias). Recusa sinal, decimal, notação científica e `bool`. O banco repete o
-      limite com um `CHECK`.
+    - Idade: inteiro de **18** (maioridade, como no questionário) a **122**, o maior registro
+      verificado da história (Jeanne Calment, 122 anos e 164 dias). Recusa sinal, decimal, notação
+      científica e `bool`. O banco repete o limite com um `CHECK`.
     - E-mail: formato válido, gravado em minúsculas.
     - Senha: 8 a 128 caracteres, com letras e números.
 
@@ -512,6 +512,20 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
     limites vêm de `GET /api/auth/regras`, para não duplicar regra em TypeScript.
   - **Privacidade:** a listagem do admin mostra o CPF mascarado (`***.456.789-**`). O CPF completo só
     aparece para o próprio usuário e na ficha de edição. O CPF não muda depois do cadastro.
+  - **Bloqueio de login:** depois de 5 senhas erradas em 15 minutos (`config.LOGIN_*`), a conta
+    fica bloqueada até completar 15 minutos sem erro, e nem a senha certa entra. Errar pelo e-mail ou
+    pelo CPF soma no mesmo contador. Um login que não existe tem contador próprio. Acertar zera as
+    falhas.
+  - **Recomendação exige login** e cada resultado fica salvo em `recomendacoes`, ligado a quem o
+    pediu, com as respostas e o resultado em JSON. Ao entrar, o front busca a última
+    (`GET /api/recomendacoes/ultima`), então a carteira aparece em qualquer aparelho. O Streamlit
+    não usa a API e continua sem login.
+  - **Dados próprios:** a pessoa edita nome, e-mail e idade (`PUT /api/auth/eu`) e troca a senha
+    informando a atual (`POST /api/auth/senha`). A troca encerra todos os logins e devolve um token
+    novo para o aparelho atual.
+  - **Exclusão definitiva (LGPD, art. 18, VI):** só para contas já excluídas (são dois passos, de
+    propósito). Apaga a linha, as sessões, as recomendações e as tentativas de login. Depois disso
+    o CPF pode criar uma conta nova.
 - **Alternativas descartadas:**
   - **SQLAlchemy/ORM** (dependência a mais para duas tabelas; o SQL puro fica visível para a banca).
   - **JWT** (exige guardar um segredo e não dá para revogar no logout sem uma lista de bloqueio; o
@@ -519,6 +533,9 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
   - **bcrypt/passlib** (dependência a mais; o scrypt da biblioteca padrão é recomendado pela OWASP).
   - **Exclusão física** (perde o histórico e impede a restauração).
   - **Unicidade de CPF só entre ativos** (permitiria duas contas da mesma pessoa).
-- **Limitação:** o SQLite fica dentro do contêiner. No Docker (D39), recriar o contêiner apaga os
-  usuários, a menos que `data/` seja montada como volume. Não há limite de tentativas de login,
-  recuperação de senha nem confirmação de e-mail.
+  - **Bloqueio por IP** (atrás de proxy ou túnel, o IP visto pela API é o do túnel, e todo mundo
+    seria bloqueado junto).
+- **Limitações:** o bloqueio por conta permite que alguém trave a conta de outra pessoa errando a
+  senha de propósito (o bloqueio é curto por isso). Não há recuperação de senha por e-mail nem
+  confirmação de e-mail. No Docker (D39), o banco fica no volume `assessor-usuarios`, que sobrevive
+  à recriação do contêiner.

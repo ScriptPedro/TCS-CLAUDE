@@ -4,6 +4,8 @@ Tabelas:
     usuarios — cadastro; ``excluido_em`` preenchido = excluído (soft delete: a linha fica
                no banco, some das listagens, não faz login e pode ser restaurada)
     sessoes  — tokens de login ativos; guarda só o hash SHA-256 do token
+    tentativas_login — senhas erradas recentes por conta (ou pelo texto digitado, se a conta não existe)
+    recomendacoes    — cada recomendação gerada, ligada a quem pediu (respostas e resultado em JSON)
 
 Senhas são guardadas com scrypt + sal aleatório (``hashlib``, sem dependência nova).
 O arquivo vem de ``ASSESSOR_DB`` ou ``config.USUARIOS_DB_FILE``.
@@ -13,6 +15,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
+import math
 import os
 import secrets
 import sqlite3
@@ -45,6 +49,20 @@ CREATE TABLE IF NOT EXISTS sessoes (
     expira_em  TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_sessoes_usuario ON sessoes(usuario_id);
+CREATE TABLE IF NOT EXISTS tentativas_login (
+    login   TEXT NOT NULL,
+    momento TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_tentativas_login ON tentativas_login(login, momento);
+CREATE TABLE IF NOT EXISTS recomendacoes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+    criada_em  TEXT    NOT NULL,
+    perfil     TEXT    NOT NULL,
+    respostas  TEXT    NOT NULL,
+    resultado  TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_recomendacoes_usuario ON recomendacoes(usuario_id, id);
 """
 
 # Colunas que saem para a API (nunca a senha)
@@ -198,6 +216,20 @@ def excluir_usuario(con: sqlite3.Connection, usuario_id: int) -> bool:
     return bool(cur.rowcount)
 
 
+def apagar_usuario_definitivo(con: sqlite3.Connection, usuario_id: int) -> bool:
+    """Exclusão física (pedido de eliminação da LGPD, art. 18, VI). Só vale para quem já está
+    excluído (soft delete): são dois passos de propósito. Apaga também sessões, recomendações
+    e tentativas de login da pessoa. Devolve False se o usuário não existe ou ainda está ativo."""
+    linha = con.execute("SELECT id FROM usuarios WHERE id = ? AND excluido_em IS NOT NULL", (usuario_id,)).fetchone()
+    if linha is None:
+        return False
+    con.execute("DELETE FROM sessoes WHERE usuario_id = ?", (usuario_id,))
+    con.execute("DELETE FROM recomendacoes WHERE usuario_id = ?", (usuario_id,))
+    con.execute("DELETE FROM tentativas_login WHERE login = ?", (f"usuario:{usuario_id}",))
+    con.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
+    return True
+
+
 def restaurar_usuario(con: sqlite3.Connection, usuario_id: int) -> dict[str, Any] | None:
     cur = con.execute("UPDATE usuarios SET excluido_em = NULL, atualizado_em = ? "
                       "WHERE id = ? AND excluido_em IS NOT NULL", (agora(), usuario_id))
@@ -207,14 +239,18 @@ def restaurar_usuario(con: sqlite3.Connection, usuario_id: int) -> dict[str, Any
 # ---------------------------------------------------------------------------
 # Login e sessões
 # ---------------------------------------------------------------------------
-def autenticar(con: sqlite3.Connection, login: str, senha: str) -> dict[str, Any] | None:
-    """Login por e-mail ou CPF. Usuário excluído não entra."""
+def chave_login(login: str) -> tuple[str, str]:
+    """E-mail ou CPF digitado → (coluna, valor normalizado). "529.982.247-25" e "52998224725" são o mesmo login."""
     login = login.strip().lower()
     digitos = "".join(c for c in login if c.isdigit())
     if "@" not in login and len(digitos) == 11:
-        campo, valor = "cpf", digitos
-    else:
-        campo, valor = "email", login
+        return "cpf", digitos
+    return "email", login
+
+
+def autenticar(con: sqlite3.Connection, login: str, senha: str) -> dict[str, Any] | None:
+    """Login por e-mail ou CPF. Usuário excluído não entra."""
+    campo, valor = chave_login(login)
     linha = con.execute(f"SELECT id, senha_hash FROM usuarios WHERE {campo} = ? AND excluido_em IS NULL",
                         (valor,)).fetchone()
     if linha is None:
@@ -246,9 +282,71 @@ def usuario_da_sessao(con: sqlite3.Connection, token: str) -> dict[str, Any] | N
     return _publico(linha)
 
 
+def conferir_senha_do_usuario(con: sqlite3.Connection, usuario_id: int, senha: str) -> bool:
+    linha = con.execute("SELECT senha_hash FROM usuarios WHERE id = ? AND excluido_em IS NULL", (usuario_id,)).fetchone()
+    return linha is not None and conferir_senha(senha, linha["senha_hash"])
+
+
+def _chave_bloqueio(con: sqlite3.Connection, login: str) -> str:
+    """Conta existente → as falhas são da conta (errar pelo e-mail ou pelo CPF soma no mesmo
+    contador); login que não existe → contador do próprio texto digitado."""
+    campo, valor = chave_login(login)
+    linha = con.execute(f"SELECT id FROM usuarios WHERE {campo} = ?", (valor,)).fetchone()
+    return f"usuario:{linha['id']}" if linha else f"{campo}:{valor}"
+
+
+def minutos_de_bloqueio(con: sqlite3.Connection, login: str) -> int:
+    """Quantos minutos faltam para o login voltar a ser aceito (0 = liberado)."""
+    chave = _chave_bloqueio(con, login)
+    agora_ = datetime.now(UTC)
+    janela = timedelta(minutes=config.LOGIN_BLOQUEIO_MINUTOS)
+    linhas = con.execute("SELECT momento FROM tentativas_login WHERE login = ? AND momento > ? ORDER BY momento",
+                         (chave, (agora_ - janela).isoformat(timespec="seconds"))).fetchall()
+    if len(linhas) < config.LOGIN_MAX_TENTATIVAS:
+        return 0
+    libera = datetime.fromisoformat(linhas[-1]["momento"]) + janela
+    return max(1, math.ceil((libera - agora_).total_seconds() / 60))
+
+
+def registrar_falha_login(con: sqlite3.Connection, login: str) -> None:
+    chave = _chave_bloqueio(con, login)
+    antigas = datetime.now(UTC) - timedelta(minutes=config.LOGIN_BLOQUEIO_MINUTOS)
+    con.execute("DELETE FROM tentativas_login WHERE momento <= ?", (antigas.isoformat(timespec="seconds"),))
+    con.execute("INSERT INTO tentativas_login (login, momento) VALUES (?, ?)", (chave, agora()))
+
+
+def limpar_falhas_login(con: sqlite3.Connection, login: str) -> None:
+    con.execute("DELETE FROM tentativas_login WHERE login = ?", (_chave_bloqueio(con, login),))
+
+
 def encerrar_sessao(con: sqlite3.Connection, token: str) -> None:
     con.execute("DELETE FROM sessoes WHERE token_hash = ?", (_hash_token(token),))
 
 
 def encerrar_sessoes(con: sqlite3.Connection, usuario_id: int) -> None:
     con.execute("DELETE FROM sessoes WHERE usuario_id = ?", (usuario_id,))
+
+
+# ---------------------------------------------------------------------------
+# Recomendações (cada resultado fica ligado a quem o pediu)
+# ---------------------------------------------------------------------------
+def salvar_recomendacao(con: sqlite3.Connection, usuario_id: int, perfil: str, respostas: dict[str, Any],
+                        resultado: dict[str, Any]) -> int:
+    cur = con.execute(
+        "INSERT INTO recomendacoes (usuario_id, criada_em, perfil, respostas, resultado) VALUES (?, ?, ?, ?, ?)",
+        (usuario_id, agora(), perfil, json.dumps(respostas, ensure_ascii=False), json.dumps(resultado, ensure_ascii=False)),
+    )
+    return int(cur.lastrowid)  # type: ignore[arg-type]
+
+
+def ultima_recomendacao(con: sqlite3.Connection, usuario_id: int) -> dict[str, Any] | None:
+    linha = con.execute("SELECT id, criada_em, perfil, respostas, resultado FROM recomendacoes "
+                        "WHERE usuario_id = ? ORDER BY id DESC LIMIT 1", (usuario_id,)).fetchone()
+    if linha is None:
+        return None
+    return {"id": linha["id"], "criada_em": linha["criada_em"], "perfil": linha["perfil"],
+            "respostas": json.loads(linha["respostas"]), "resultado": json.loads(linha["resultado"])}
+
+
+def contar_recomendacoes(con: sqlite3.Connection, usuario_id: int) -> int:
+    return con.execute("SELECT count(*) FROM recomendacoes WHERE usuario_id = ?", (usuario_id,)).fetchone()[0]

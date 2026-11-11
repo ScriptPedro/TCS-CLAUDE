@@ -5,7 +5,8 @@ Expõe o mesmo fluxo do app Streamlit, sem duplicar lógica: as perguntas vêm d
 
     GET  /api/saude          → os modelos estão carregados?
     GET  /api/questionario   → etapas, perguntas, opções e respostas padrão
-    POST /api/recomendacao   → respostas do formulário → recomendação completa
+    POST /api/recomendacao   → respostas do formulário → recomendação completa (exige login; fica salva)
+    GET  /api/recomendacoes/ultima → última recomendação de quem está logado (ou null)
     /api/auth/*, /api/usuarios → cadastro, login e gerenciamento de usuários (api/usuarios.py, D40)
 
 Uso (na raiz do projeto):
@@ -18,15 +19,18 @@ em http://localhost:8000. ASSESSOR_MODELS_DIR aponta para outra pasta de modelos
 from __future__ import annotations
 
 import os
+import sqlite3
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from api import banco
+from api.usuarios import conexao, usuario_logado
 from api.usuarios import roteador as roteador_usuarios
 from app import components as ui
 from src import config
@@ -178,7 +182,9 @@ def serializar(res: Recomendacao, avisos: list[str]) -> dict[str, Any]:
 
 
 @app.post("/api/recomendacao")
-def recomendacao(body: Respostas) -> dict[str, Any]:
+def recomendacao(body: Respostas, usuario: dict[str, Any] = Depends(usuario_logado),
+                 con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+    """Só para quem fez login (D40); cada resultado fica salvo e ligado a quem o pediu."""
     q, erros = ui.montar_questionario(body.respostas)
     if erros:
         raise HTTPException(status_code=422, detail={"erros": erros})
@@ -186,7 +192,16 @@ def recomendacao(body: Respostas) -> dict[str, Any]:
         artefatos = obter_artefatos()
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail={"erros": [f"Modelos não encontrados. {exc}"]}) from exc
-    return serializar(aconselhar(q, artefatos), ui.avisos_de_consistencia(q))
+    resultado = serializar(aconselhar(q, artefatos), ui.avisos_de_consistencia(q))
+    banco.salvar_recomendacao(con, usuario["id"], resultado["perfil"]["efetivo"], body.respostas, resultado)
+    return resultado
+
+
+@app.get("/api/recomendacoes/ultima")
+def ultima_recomendacao(usuario: dict[str, Any] = Depends(usuario_logado),
+                        con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any] | None:
+    """Ao entrar em outro aparelho, a pessoa reencontra a carteira que já tinha gerado."""
+    return banco.ultima_recomendacao(con, usuario["id"])
 
 
 # ---------------------------------------------------------------------------

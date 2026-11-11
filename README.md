@@ -165,8 +165,10 @@ O cadastro pela tela cria sempre um usuário comum. Crie o primeiro administrado
 python -m api.usuarios criar-admin             # pergunta nome, CPF, e-mail, idade e senha
 ```
 
-O administrador encontra **Conta → Gerenciar usuários**, onde pode cadastrar, editar, excluir
-(soft delete) e restaurar contas. O banco é `data/usuarios.db`. Para usar outro arquivo, defina
+Para gerar uma recomendação é preciso estar logado, e a última carteira de cada pessoa fica salva na
+conta. Em **Conta**, cada pessoa edita os próprios dados e troca a senha. O administrador também encontra
+**Gerenciar usuários**, onde pode cadastrar, editar, excluir (soft delete), restaurar e apagar
+definitivamente (LGPD) as contas. Depois de 5 senhas erradas, o login fica bloqueado por 15 minutos. O banco é `data/usuarios.db`. Para usar outro arquivo, defina
 `ASSESSOR_DB`. No contêiner, rode o mesmo comando com `docker exec -it <contêiner> python -m api.usuarios criar-admin`.
 
 Para apresentar com um único servidor: `cd frontend; npm run build` e depois só a API

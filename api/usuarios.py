@@ -2,9 +2,11 @@
 
     GET    /api/auth/regras               → limites dos campos (o front usa para filtrar a digitação)
     POST   /api/auth/registro             → cria conta comum e já entra
-    POST   /api/auth/login                → e-mail ou CPF + senha → token
+    POST   /api/auth/login                → e-mail ou CPF + senha → token (bloqueia após várias senhas erradas)
     POST   /api/auth/logout               → encerra a sessão do token
     GET    /api/auth/eu                   → usuário do token
+    PUT    /api/auth/eu                   → a pessoa edita o próprio nome, e-mail e idade
+    POST   /api/auth/senha                → a pessoa troca a própria senha (senha atual + nova)
 
     GET    /api/usuarios?busca=&excluidos= → lista (admin)
     POST   /api/usuarios                   → cria, podendo escolher o tipo (admin)
@@ -12,6 +14,7 @@
     PUT    /api/usuarios/{id}              → edita nome, e-mail, idade, tipo e/ou senha (admin)
     DELETE /api/usuarios/{id}              → soft delete (admin)
     POST   /api/usuarios/{id}/restaurar    → desfaz o soft delete (admin)
+    DELETE /api/usuarios/{id}/definitivo   → apaga de vez quem já está excluído, com recomendações (admin, LGPD)
 
 O token vai no cabeçalho ``Authorization: Bearer <token>``. Erros seguem o formato do
 resto da API: ``{"detail": {"erros": [...], "campos": {campo: mensagem}}}``.
@@ -128,6 +131,17 @@ class Login(BaseModel):
     senha: Any = None
 
 
+class MeusDados(BaseModel):
+    nome: Any = None
+    email: Any = None
+    idade: Any = None
+
+
+class TrocaSenha(BaseModel):
+    senha_atual: Any = None
+    nova_senha: Any = None
+
+
 # ---------------------------------------------------------------------------
 # Autenticação
 # ---------------------------------------------------------------------------
@@ -159,9 +173,16 @@ def registrar(body: Registro, con: sqlite3.Connection = Depends(conexao)) -> dic
 def entrar(body: Login, con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
     if not isinstance(body.login, str) or not isinstance(body.senha, str) or not body.login.strip() or not body.senha:
         raise _erro(422, "Informe e-mail ou CPF e a senha.")
+    if minutos := banco.minutos_de_bloqueio(con, body.login):
+        raise _erro(429, f"Muitas tentativas com senha errada. Tente de novo em {minutos} min.")
     usuario = banco.autenticar(con, body.login, body.senha)
     if usuario is None:
+        banco.registrar_falha_login(con, body.login)
+        con.commit()  # a falha precisa ficar gravada mesmo com o erro que vem a seguir
+        if minutos := banco.minutos_de_bloqueio(con, body.login):
+            raise _erro(429, f"Muitas tentativas com senha errada. Tente de novo em {minutos} min.")
         raise _erro(401, "E-mail/CPF ou senha incorretos.")
+    banco.limpar_falhas_login(con, body.login)
     return {"token": banco.abrir_sessao(con, usuario["id"]), "usuario": serializar(usuario, cpf_completo=True)}
 
 
@@ -174,6 +195,35 @@ def sair(authorization: str | None = Header(default=None), con: sqlite3.Connecti
 @roteador.get("/auth/eu")
 def eu(usuario: dict[str, Any] = Depends(usuario_logado)) -> dict[str, Any]:
     return serializar(usuario, cpf_completo=True)
+
+
+@roteador.put("/auth/eu")
+def editar_meus_dados(body: MeusDados, usuario: dict[str, Any] = Depends(usuario_logado),
+                      con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+    """Nome, e-mail e idade. CPF e tipo de usuário não mudam por aqui."""
+    valores, erros = validar(body.model_dump(), ["nome", "email", "idade"])
+    if erros:
+        raise _erro_validacao(erros)
+    try:
+        return serializar(banco.atualizar_usuario(con, usuario["id"], **valores), cpf_completo=True)  # type: ignore[arg-type]
+    except banco.Conflito as exc:
+        raise _conflito(exc) from exc
+
+
+@roteador.post("/auth/senha")
+def trocar_senha(body: TrocaSenha, usuario: dict[str, Any] = Depends(usuario_logado),
+                 con: sqlite3.Connection = Depends(conexao)) -> dict[str, Any]:
+    """Confere a senha atual, grava a nova, encerra os outros logins e devolve um token novo."""
+    if not isinstance(body.senha_atual, str) or not banco.conferir_senha_do_usuario(con, usuario["id"], body.senha_atual):
+        raise _erro(422, "A senha atual está incorreta.", {"senha_atual": "A senha atual está incorreta."})
+    valores, erros = validar({"senha": body.nova_senha}, ["senha"])
+    if erros:
+        raise _erro_validacao({"nova_senha": erros["senha"]})
+    if valores["senha"] == body.senha_atual:
+        raise _erro(422, "A nova senha precisa ser diferente da atual.",
+                    {"nova_senha": "A nova senha precisa ser diferente da atual."})
+    atualizado = banco.atualizar_usuario(con, usuario["id"], senha=valores["senha"])  # derruba todas as sessões
+    return {"token": banco.abrir_sessao(con, usuario["id"]), "usuario": serializar(atualizado, cpf_completo=True)}  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +298,15 @@ def restaurar(usuario_id: int, _: dict[str, Any] = Depends(exigir_admin),
     if usuario is None:
         raise _erro(409, "Este usuário não está excluído.")
     return serializar(usuario, cpf_completo=True)
+
+
+@roteador.delete("/usuarios/{usuario_id}/definitivo", status_code=status.HTTP_204_NO_CONTENT)
+def apagar_definitivo(usuario_id: int, _: dict[str, Any] = Depends(exigir_admin),
+                      con: sqlite3.Connection = Depends(conexao)) -> Response:
+    if _existente(con, usuario_id, incluir_excluidos=True)["excluido_em"] is None:
+        raise _erro(409, "Exclua a conta primeiro. A exclusão definitiva só vale para contas já excluídas.")
+    banco.apagar_usuario_definitivo(con, usuario_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ---------------------------------------------------------------------------

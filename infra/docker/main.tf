@@ -1,7 +1,8 @@
 # Deploy com Terraform no Docker do próprio computador (D39): sem nuvem, sem cartão.
 # O Terraform monta a imagem a partir do Dockerfile da raiz, cria uma rede, sobe o
 # contêiner da API (que também serve o front React) com a pasta models/ montada em
-# /models e, se pedido, um túnel do Cloudflare com um endereço público temporário.
+# /models, o banco de usuários num volume nomeado (D40) e, se pedido, um túnel do
+# Cloudflare com um endereço público temporário.
 
 locals {
   raiz = abspath("${path.module}/../..")
@@ -25,6 +26,10 @@ locals {
     tolist(fileset(local.raiz, "frontend/public/**")),
   )
   hash_codigo = sha1(join("", [for f in sort(local.arquivos_imagem) : filesha1("${local.raiz}/${f}")]))
+
+  # Volume do banco de usuários (D40). Não é um recurso do Terraform de propósito: o Docker o cria
+  # no primeiro apply e ele sobrevive a rebuilds, a recriações do contêiner e ao terraform destroy.
+  volume_usuarios = "${var.nome}-usuarios"
 }
 
 resource "docker_network" "rede" {
@@ -50,7 +55,7 @@ resource "docker_container" "app" {
   name    = var.nome
   image   = docker_image.app.image_id
   restart = "unless-stopped"
-  env     = ["ASSESSOR_MODELS_DIR=/models"]
+  env     = ["ASSESSOR_MODELS_DIR=/models", "ASSESSOR_DB=/app/data/usuarios.db"]
 
   ports {
     internal = 8080
@@ -61,6 +66,11 @@ resource "docker_container" "app" {
     host_path      = local.pasta_modelos
     container_path = "/models"
     read_only      = true
+  }
+
+  volumes {
+    volume_name    = local.volume_usuarios
+    container_path = "/app/data"
   }
 
   networks_advanced {

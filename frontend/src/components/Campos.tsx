@@ -86,7 +86,7 @@ export function CampoIdade({ regras, ...props }: Base & { regras: Regras | null 
     <CampoTexto
       {...props} inputMode="numeric" autoComplete="off" maxLength={String(maxima).length}
       filtro={(v) => filtrarIdade(v, props.valor, maxima)}
-      ajuda={props.ajuda ?? `Em anos, de ${regras?.idade_minima ?? 1} a ${maxima} (o maior registro de idade da história).`}
+      ajuda={props.ajuda ?? `Em anos, de ${regras?.idade_minima ?? 18} a ${maxima} (o maior registro de idade da história).`}
     />
   );
 }

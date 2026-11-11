@@ -89,20 +89,21 @@ def test_nome_invalido(nome: object) -> None:
     assert valor is None and erro
 
 
-@pytest.mark.parametrize("idade, esperado", [(1, 1), ("1", 1), ("40", 40), (" 40 ", 40), (122, 122), ("122", 122)])
+@pytest.mark.parametrize("idade, esperado", [(18, 18), ("18", 18), ("40", 40), (" 40 ", 40), (122, 122), ("122", 122)])
 def test_idade_valida(idade: object, esperado: int) -> None:
     assert validar_idade(idade) == (esperado, None)
 
 
-@pytest.mark.parametrize("idade", [0, "0", -1, "-1", "+5", 123, "123", "1000", 30.5, "30.5", "30,5", "1e2", "trinta",
+@pytest.mark.parametrize("idade", [17, "17", 1, 0, "0", -1, "-1", "+5", 123, "123", "1000", 30.5, "30.5", "30,5", "1e2", "trinta",
                                    True, "", None])
-def test_idade_so_aceita_inteiro_positivo_ate_o_recorde(idade: object) -> None:
+def test_idade_so_aceita_inteiro_de_maior_ate_o_recorde(idade: object) -> None:
     valor, erro = validar_idade(idade)
     assert valor is None and erro
 
 
 def test_idade_maxima_e_o_recorde_da_historia() -> None:
     assert config.IDADE_MAXIMA == 122  # Jeanne Calment, 122 anos e 164 dias
+    assert config.IDADE_MINIMA == 18   # maioridade, como no questionário
 
 
 @pytest.mark.parametrize("email, ok", [("Ana@Exemplo.com", True), ("a.b+c@sub.dominio.com.br", True),
@@ -283,3 +284,98 @@ def test_cli_criar_admin(db: Path, monkeypatch: pytest.MonkeyPatch, capsys: pyte
         assert banco.listar_usuarios(con)[0]["papel"] == "admin"
     with pytest.raises(ValueError, match="Já existe"):
         usuarios.criar_admin(ADMIN)
+
+
+# ---------------------------------------------------------------------------
+# Bloqueio de login, dados próprios, troca de senha e exclusão definitiva
+# ---------------------------------------------------------------------------
+def _login(client: TestClient, login: str, senha: str) -> int:
+    return client.post("/api/auth/login", json={"login": login, "senha": senha}).status_code
+
+
+def test_bloqueia_login_depois_de_varias_senhas_erradas(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    client.post("/api/auth/registro", json=ANA)
+    client.post("/api/auth/registro", json={**ADMIN, "idade": 40})
+    for _ in range(config.LOGIN_MAX_TENTATIVAS - 2):
+        assert _login(client, "ana@exemplo.com", "errada123") == 401
+    assert _login(client, CPF_ANA, "errada123") == 401  # errar pelo CPF soma no contador da mesma conta
+    assert _login(client, "ana@exemplo.com", "errada123") == 429  # a 5ª falha já bloqueia
+    r = client.post("/api/auth/login", json={"login": "111.444.777-35", "senha": ANA["senha"]})
+    assert r.status_code == 429 and "Tente de novo em" in r.json()["detail"]["erros"][0]  # nem a senha certa entra
+    assert _login(client, ADMIN["email"], ADMIN["senha"]) == 200  # as outras contas seguem livres
+
+    # passado o intervalo, volta a aceitar
+    with banco.conectar() as con:
+        con.execute("UPDATE tentativas_login SET momento = '2000-01-01T00:00:00+00:00'")
+    assert _login(client, "ana@exemplo.com", ANA["senha"]) == 200
+
+
+def test_login_certo_zera_as_falhas(client: TestClient) -> None:
+    client.post("/api/auth/registro", json=ANA)
+    for _ in range(config.LOGIN_MAX_TENTATIVAS - 1):
+        _login(client, "ana@exemplo.com", "errada123")
+    assert _login(client, "ana@exemplo.com", ANA["senha"]) == 200
+    assert _login(client, "ana@exemplo.com", "errada123") == 401  # contagem recomeçou
+
+
+def test_usuario_edita_os_proprios_dados(client: TestClient) -> None:
+    corpo = client.post("/api/auth/registro", json=ANA).json()
+    ana = _cabecalho(corpo["token"])
+    r = client.put("/api/auth/eu", headers=ana, json={"nome": "Ana Maria Souza", "email": "nova@exemplo.com", "idade": "29",
+                                                      "papel": "admin", "cpf": CPF_BRUNO})
+    assert r.status_code == 200
+    u = r.json()
+    assert (u["nome"], u["email"], u["idade"]) == ("Ana Maria Souza", "nova@exemplo.com", 29)
+    assert u["papel"] == "usuario" and u["cpf"] == CPF_ANA  # tipo e CPF não mudam por aqui
+    r = client.put("/api/auth/eu", headers=ana, json={"nome": "Ana", "email": "x", "idade": 17})
+    assert r.status_code == 422 and set(r.json()["detail"]["campos"]) == {"nome", "email", "idade"}
+    assert client.put("/api/auth/eu", json={"nome": "Ana Souza"}).status_code == 401
+
+
+def test_usuario_troca_a_propria_senha(client: TestClient) -> None:
+    corpo = client.post("/api/auth/registro", json=ANA).json()
+    antigo = _cabecalho(corpo["token"])
+    outro_aparelho = _cabecalho(client.post("/api/auth/login", json={"login": CPF_ANA, "senha": ANA["senha"]}).json()["token"])
+
+    r = client.post("/api/auth/senha", headers=antigo, json={"senha_atual": "errada123", "nova_senha": "novaSenha9"})
+    assert r.status_code == 422 and "senha_atual" in r.json()["detail"]["campos"]
+    r = client.post("/api/auth/senha", headers=antigo, json={"senha_atual": ANA["senha"], "nova_senha": "curta"})
+    assert r.status_code == 422 and "nova_senha" in r.json()["detail"]["campos"]
+    r = client.post("/api/auth/senha", headers=antigo, json={"senha_atual": ANA["senha"], "nova_senha": ANA["senha"]})
+    assert r.status_code == 422
+
+    r = client.post("/api/auth/senha", headers=antigo, json={"senha_atual": ANA["senha"], "nova_senha": "novaSenha9"})
+    assert r.status_code == 200
+    novo = _cabecalho(r.json()["token"])
+    assert client.get("/api/auth/eu", headers=novo).status_code == 200
+    assert client.get("/api/auth/eu", headers=antigo).status_code == 401
+    assert client.get("/api/auth/eu", headers=outro_aparelho).status_code == 401
+    assert _login(client, "ana@exemplo.com", "novaSenha9") == 200
+
+
+def test_exclusao_definitiva_so_depois_do_soft_delete(client: TestClient, admin: dict[str, str]) -> None:
+    corpo = client.post("/api/auth/registro", json=ANA).json()
+    ana_id = corpo["usuario"]["id"]
+    with banco.conectar() as con:
+        banco.salvar_recomendacao(con, ana_id, "moderado", {"idade": 28}, {"perfil": {}})
+        banco.registrar_falha_login(con, "ana@exemplo.com")
+        banco.registrar_falha_login(con, "ninguem@exemplo.com")
+
+    r = client.delete(f"/api/usuarios/{ana_id}/definitivo", headers=admin)
+    assert r.status_code == 409  # ainda ativa: precisa do soft delete antes
+    client.delete(f"/api/usuarios/{ana_id}", headers=admin)
+    assert client.delete(f"/api/usuarios/{ana_id}/definitivo", headers=admin).status_code == 204
+
+    with banco.conectar() as con:
+        for tabela in ("usuarios", "sessoes", "recomendacoes"):
+            assert con.execute(f"SELECT count(*) FROM {tabela} WHERE {'id' if tabela == 'usuarios' else 'usuario_id'} = ?",
+                               (ana_id,)).fetchone()[0] == 0
+        assert [r[0] for r in con.execute("SELECT login FROM tentativas_login")] == ["email:ninguem@exemplo.com"]
+    assert client.get(f"/api/usuarios/{ana_id}", headers=admin).status_code == 404
+    # sem rastro: o mesmo CPF pode criar uma conta nova
+    assert client.post("/api/auth/registro", json=ANA).status_code == 201
+
+
+def test_usuario_comum_nao_apaga_definitivo(client: TestClient) -> None:
+    token = client.post("/api/auth/registro", json=ANA).json()["token"]
+    assert client.delete("/api/usuarios/1/definitivo", headers=_cabecalho(token)).status_code == 403
