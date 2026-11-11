@@ -49,6 +49,7 @@ assessor-investimentos/
 ├── data/processed/        # santander_50k.parquet, santander_50k_clusters.parquet
 ├── docs/
 │   ├── decisoes.md        # D1–D41: cada decisão técnica e as alternativas descartadas
+│   ├── bpmn/              # fluxos to-be em BPMN 2.0 (.bpmn editável + .svg para ver no GitHub)
 │   ├── limitacoes.md      # limitações, vieses, ética/LGPD, próximos passos
 │   ├── roteiro_apresentacao.md  # roteiro de 13 min + perguntas prováveis da banca
 │   └── figures/           # figuras 01–18 para os slides
@@ -224,6 +225,7 @@ sintéticos com 10 mil clientes, o pipeline completo levou ~21 s.
 ## Documentação
 
 - [Decisões técnicas (D1–D41)](docs/decisoes.md)
+- [Fluxos to-be em BPMN: login, carteira, conta, gestão de usuários e treino](docs/bpmn/README.md)
 - [Deploy com Terraform no Docker local](infra/docker/README.md)
 - [Deploy com Terraform no Google Cloud (cota grátis)](infra/gcp/README.md)
 - [Limitações, vieses, ética e próximos passos](docs/limitacoes.md)

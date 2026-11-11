@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definicoes_treinamento" targetNamespace="https://github.com/ScriptPedro/TCS-CLAUDE/docs/bpmn" exporter="Assessor de Investimentos Virtual" exporterVersion="1.0">
+  <bpmn:collaboration id="Colaboracao_treinamento">
+    <bpmn:participant id="Participante_treinamento" name="Treinamento dos modelos (offline)" processRef="Processo_treinamento" />
+  </bpmn:collaboration>
+  <bpmn:process id="Processo_treinamento" name="07 — Treinar e publicar os modelos" isExecutable="false">
+    <bpmn:documentation>Etapas em ordem; nenhuma usa dados dos usuários do app. O Raio X é opcional.</bpmn:documentation>
+    <bpmn:laneSet id="Raias_treinamento">
+      <bpmn:lane id="Raia_treinamento_0" name="Equipe do projeto">
+        <bpmn:flowNodeRef>ini</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>coloca</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>roda</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>revisa</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>aceito</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>publica</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_treinamento_1" name="Pipeline (python -m src.pipeline)">
+        <bpmn:flowNodeRef>prepara</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>segmenta</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>recomenda</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>tem_raio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>raio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>junta</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>personas</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>vies</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="ini" name="Dados novos ou mudança no modelo">
+      <bpmn:outgoing>Seta_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:manualTask id="coloca" name="Coloca os dados do Kaggle e o Raio X em data/raw">
+      <bpmn:documentation>train_ver2.csv (Santander, Kaggle) e DADOS BRUTOS RAIO X 2026.xlsx (ANBIMA).</bpmn:documentation>
+      <bpmn:incoming>Seta_1</bpmn:incoming>
+      <bpmn:outgoing>Seta_2</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:userTask id="roda" name="Roda o pipeline">
+      <bpmn:incoming>Seta_2</bpmn:incoming>
+      <bpmn:incoming>Seta_14</bpmn:incoming>
+      <bpmn:outgoing>Seta_3</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="prepara" name="prepare_data: limpa e sorteia 50 mil clientes">
+      <bpmn:incoming>Seta_3</bpmn:incoming>
+      <bpmn:outgoing>Seta_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="segmenta" name="segmentation: K-Means × GMM e escolha do k">
+      <bpmn:incoming>Seta_4</bpmn:incoming>
+      <bpmn:outgoing>Seta_5</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="recomenda" name="recommender: LightGBM por produto + SHAP">
+      <bpmn:incoming>Seta_5</bpmn:incoming>
+      <bpmn:outgoing>Seta_6</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="Assoc_treinamento_0"><bpmn:targetRef>modelos</bpmn:targetRef></bpmn:dataOutputAssociation>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="tem_raio" name="Raio X em data/raw?">
+      <bpmn:incoming>Seta_6</bpmn:incoming>
+      <bpmn:outgoing>Seta_7</bpmn:outgoing>
+      <bpmn:outgoing>Seta_8</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="raio" name="raio_x: posse por renda × idade">
+      <bpmn:incoming>Seta_7</bpmn:incoming>
+      <bpmn:outgoing>Seta_9</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="junta" name="">
+      <bpmn:incoming>Seta_8</bpmn:incoming>
+      <bpmn:incoming>Seta_9</bpmn:incoming>
+      <bpmn:outgoing>Seta_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="personas" name="personas: saídas esperadas">
+      <bpmn:incoming>Seta_10</bpmn:incoming>
+      <bpmn:outgoing>Seta_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="vies" name="bias_audit: auditoria de viés (sexo, idade)">
+      <bpmn:incoming>Seta_11</bpmn:incoming>
+      <bpmn:outgoing>Seta_12</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:dataObjectReference id="modelos" name="models/*.joblib, prep_stats.json, raio_x.json" dataObjectRef="Objeto_modelos" />
+    <bpmn:userTask id="revisa" name="Revisa reports/ e docs/figures/">
+      <bpmn:incoming>Seta_12</bpmn:incoming>
+      <bpmn:outgoing>Seta_13</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="aceito" name="Resultado aceito?">
+      <bpmn:incoming>Seta_13</bpmn:incoming>
+      <bpmn:outgoing>Seta_14</bpmn:outgoing>
+      <bpmn:outgoing>Seta_15</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:manualTask id="publica" name="Publica: reinicia a API com os modelos novos">
+      <bpmn:incoming>Seta_15</bpmn:incoming>
+      <bpmn:outgoing>Seta_16</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:endEvent id="fim" name="Modelos novos em uso">
+      <bpmn:incoming>Seta_16</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:dataObject id="Objeto_modelos" />
+    <bpmn:sequenceFlow id="Seta_1" sourceRef="ini" targetRef="coloca" />
+    <bpmn:sequenceFlow id="Seta_2" sourceRef="coloca" targetRef="roda" />
+    <bpmn:sequenceFlow id="Seta_3" sourceRef="roda" targetRef="prepara" />
+    <bpmn:sequenceFlow id="Seta_4" sourceRef="prepara" targetRef="segmenta" />
+    <bpmn:sequenceFlow id="Seta_5" sourceRef="segmenta" targetRef="recomenda" />
+    <bpmn:sequenceFlow id="Seta_6" sourceRef="recomenda" targetRef="tem_raio" />
+    <bpmn:sequenceFlow id="Seta_7" name="sim" sourceRef="tem_raio" targetRef="raio" />
+    <bpmn:sequenceFlow id="Seta_8" name="não" sourceRef="tem_raio" targetRef="junta" />
+    <bpmn:sequenceFlow id="Seta_9" sourceRef="raio" targetRef="junta" />
+    <bpmn:sequenceFlow id="Seta_10" sourceRef="junta" targetRef="personas" />
+    <bpmn:sequenceFlow id="Seta_11" sourceRef="personas" targetRef="vies" />
+    <bpmn:sequenceFlow id="Seta_12" sourceRef="vies" targetRef="revisa" />
+    <bpmn:sequenceFlow id="Seta_13" sourceRef="revisa" targetRef="aceito" />
+    <bpmn:sequenceFlow id="Seta_14" name="não: ajusta src/config.py" sourceRef="aceito" targetRef="roda" />
+    <bpmn:sequenceFlow id="Seta_15" name="sim" sourceRef="aceito" targetRef="publica" />
+    <bpmn:sequenceFlow id="Seta_16" sourceRef="publica" targetRef="fim" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagrama_treinamento">
+    <bpmndi:BPMNPlane id="Plano_treinamento" bpmnElement="Colaboracao_treinamento">
+      <bpmndi:BPMNShape id="Participante_treinamento_di" bpmnElement="Participante_treinamento" isHorizontal="true">
+        <dc:Bounds x="120" y="40" width="3010" height="480" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_treinamento_0_di" bpmnElement="Raia_treinamento_0" isHorizontal="true">
+        <dc:Bounds x="150" y="40" width="2980" height="190" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_treinamento_1_di" bpmnElement="Raia_treinamento_1" isHorizontal="true">
+        <dc:Bounds x="150" y="230" width="2980" height="290" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ini_di" bpmnElement="ini">
+        <dc:Bounds x="267" y="117" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="230" y="159" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="coloca_di" bpmnElement="coloca">
+        <dc:Bounds x="405" y="92" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="roda_di" bpmnElement="roda">
+        <dc:Bounds x="600" y="92" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="prepara_di" bpmnElement="prepara">
+        <dc:Bounds x="795" y="292" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="segmenta_di" bpmnElement="segmenta">
+        <dc:Bounds x="990" y="292" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="recomenda_di" bpmnElement="recomenda">
+        <dc:Bounds x="1185" y="292" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="tem_raio_di" bpmnElement="tem_raio" isMarkerVisible="true">
+        <dc:Bounds x="1430" y="310" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1328" y="286" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="raio_di" bpmnElement="raio">
+        <dc:Bounds x="1575" y="392" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="junta_di" bpmnElement="junta" isMarkerVisible="true">
+        <dc:Bounds x="1820" y="310" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1718" y="286" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="personas_di" bpmnElement="personas">
+        <dc:Bounds x="1965" y="292" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="vies_di" bpmnElement="vies">
+        <dc:Bounds x="2160" y="292" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="modelos_di" bpmnElement="modelos">
+        <dc:Bounds x="1338" y="415" width="40" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1302" y="471" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="revisa_di" bpmnElement="revisa">
+        <dc:Bounds x="2355" y="92" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="aceito_di" bpmnElement="aceito" isMarkerVisible="true">
+        <dc:Bounds x="2600" y="110" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2498" y="86" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="publica_di" bpmnElement="publica">
+        <dc:Bounds x="2745" y="92" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_di" bpmnElement="fim">
+        <dc:Bounds x="2997" y="117" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2960" y="159" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Seta_1_di" bpmnElement="Seta_1">
+        <di:waypoint x="303" y="135" />
+        <di:waypoint x="405" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_2_di" bpmnElement="Seta_2">
+        <di:waypoint x="555" y="135" />
+        <di:waypoint x="600" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_3_di" bpmnElement="Seta_3">
+        <di:waypoint x="750" y="135" />
+        <di:waypoint x="770" y="135" />
+        <di:waypoint x="770" y="335" />
+        <di:waypoint x="795" y="335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_4_di" bpmnElement="Seta_4">
+        <di:waypoint x="945" y="335" />
+        <di:waypoint x="990" y="335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_5_di" bpmnElement="Seta_5">
+        <di:waypoint x="1140" y="335" />
+        <di:waypoint x="1185" y="335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_6_di" bpmnElement="Seta_6">
+        <di:waypoint x="1335" y="335" />
+        <di:waypoint x="1430" y="335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_7_di" bpmnElement="Seta_7">
+        <di:waypoint x="1455" y="360" />
+        <di:waypoint x="1455" y="435" />
+        <di:waypoint x="1575" y="435" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1463" y="415" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_8_di" bpmnElement="Seta_8">
+        <di:waypoint x="1480" y="335" />
+        <di:waypoint x="1820" y="335" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1488" y="315" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_9_di" bpmnElement="Seta_9">
+        <di:waypoint x="1725" y="435" />
+        <di:waypoint x="1845" y="435" />
+        <di:waypoint x="1845" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_10_di" bpmnElement="Seta_10">
+        <di:waypoint x="1870" y="335" />
+        <di:waypoint x="1965" y="335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_11_di" bpmnElement="Seta_11">
+        <di:waypoint x="2115" y="335" />
+        <di:waypoint x="2160" y="335" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_12_di" bpmnElement="Seta_12">
+        <di:waypoint x="2310" y="335" />
+        <di:waypoint x="2330" y="335" />
+        <di:waypoint x="2330" y="135" />
+        <di:waypoint x="2355" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_13_di" bpmnElement="Seta_13">
+        <di:waypoint x="2505" y="135" />
+        <di:waypoint x="2600" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_14_di" bpmnElement="Seta_14">
+        <di:waypoint x="2625" y="110" />
+        <di:waypoint x="2625" y="67" />
+        <di:waypoint x="675" y="67" />
+        <di:waypoint x="675" y="92" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2631" y="88" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_15_di" bpmnElement="Seta_15">
+        <di:waypoint x="2650" y="135" />
+        <di:waypoint x="2745" y="135" />
+        <bpmndi:BPMNLabel><dc:Bounds x="2658" y="115" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_16_di" bpmnElement="Seta_16">
+        <di:waypoint x="2895" y="135" />
+        <di:waypoint x="2997" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_treinamento_0_di" bpmnElement="Assoc_treinamento_0">
+        <di:waypoint x="1260" y="378" />
+        <di:waypoint x="1358" y="415" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

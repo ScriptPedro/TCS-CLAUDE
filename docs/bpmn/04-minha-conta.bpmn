@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definicoes_minha_conta" targetNamespace="https://github.com/ScriptPedro/TCS-CLAUDE/docs/bpmn" exporter="Assessor de Investimentos Virtual" exporterVersion="1.0">
+  <bpmn:collaboration id="Colaboracao_minha_conta">
+    <bpmn:participant id="Participante_minha_conta" name="Minha conta" processRef="Processo_minha_conta" />
+  </bpmn:collaboration>
+  <bpmn:process id="Processo_minha_conta" name="04 — Minha conta (dados, senha e saída)" isExecutable="false">
+    <bpmn:documentation>A própria pessoa edita nome, e-mail e idade (CPF e tipo não mudam por aqui), troca a senha ou sai.</bpmn:documentation>
+    <bpmn:laneSet id="Raias_minha_conta">
+      <bpmn:lane id="Raia_minha_conta_0" name="Cliente">
+        <bpmn:flowNodeRef>ini</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>escolha</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>altera</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>senhas</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_minha_conta_1" name="Aplicativo (front React)">
+        <bpmn:flowNodeRef>mostra</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>erro_dados</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>atualiza</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim_dados</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>erro_senha</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>token</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim_senha</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>sair</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Raia_minha_conta_2" name="API (FastAPI) + PostgreSQL">
+        <bpmn:flowNodeRef>put</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ok_dados</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>grava</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>post</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ok_senha</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>troca</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>encerra</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>fim_sair</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="ini" name="Abre a aba Conta">
+      <bpmn:outgoing>Seta_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="mostra" name="Mostra nome, e-mail, CPF e idade">
+      <bpmn:incoming>Seta_1</bpmn:incoming>
+      <bpmn:outgoing>Seta_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="escolha" name="O que deseja?">
+      <bpmn:incoming>Seta_2</bpmn:incoming>
+      <bpmn:outgoing>Seta_3</bpmn:outgoing>
+      <bpmn:outgoing>Seta_4</bpmn:outgoing>
+      <bpmn:outgoing>Seta_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:userTask id="altera" name="Altera nome, e-mail ou idade">
+      <bpmn:incoming>Seta_3</bpmn:incoming>
+      <bpmn:incoming>Seta_9</bpmn:incoming>
+      <bpmn:outgoing>Seta_6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="put" name="Valida e confere e-mail único (PUT /api/auth/eu)">
+      <bpmn:incoming>Seta_6</bpmn:incoming>
+      <bpmn:outgoing>Seta_7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="ok_dados" name="Válido?">
+      <bpmn:incoming>Seta_7</bpmn:incoming>
+      <bpmn:outgoing>Seta_8</bpmn:outgoing>
+      <bpmn:outgoing>Seta_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="erro_dados" name="Mostra o erro no campo">
+      <bpmn:incoming>Seta_8</bpmn:incoming>
+      <bpmn:outgoing>Seta_9</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="grava" name="Grava (CPF e tipo não mudam)">
+      <bpmn:incoming>Seta_10</bpmn:incoming>
+      <bpmn:outgoing>Seta_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="atualiza" name="Atualiza a saudação e a ficha">
+      <bpmn:incoming>Seta_11</bpmn:incoming>
+      <bpmn:outgoing>Seta_12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim_dados" name="Dados atualizados">
+      <bpmn:incoming>Seta_12</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="senhas" name="Informa a senha atual e a nova (2x)">
+      <bpmn:incoming>Seta_4</bpmn:incoming>
+      <bpmn:incoming>Seta_16</bpmn:incoming>
+      <bpmn:outgoing>Seta_13</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="post" name="Confere a atual e a regra da nova (POST /api/auth/senha)">
+      <bpmn:incoming>Seta_13</bpmn:incoming>
+      <bpmn:outgoing>Seta_14</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="ok_senha" name="Aceita?">
+      <bpmn:incoming>Seta_14</bpmn:incoming>
+      <bpmn:outgoing>Seta_15</bpmn:outgoing>
+      <bpmn:outgoing>Seta_17</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="erro_senha" name="Mostra o erro">
+      <bpmn:incoming>Seta_15</bpmn:incoming>
+      <bpmn:outgoing>Seta_16</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="troca" name="Grava o hash, encerra as sessões e abre uma nova">
+      <bpmn:incoming>Seta_17</bpmn:incoming>
+      <bpmn:outgoing>Seta_18</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:task id="token" name="Guarda o token novo">
+      <bpmn:incoming>Seta_18</bpmn:incoming>
+      <bpmn:outgoing>Seta_19</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="fim_senha" name="Senha trocada; outros aparelhos saem">
+      <bpmn:incoming>Seta_19</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="sair" name="Envia o logout e apaga token e carteira do aparelho">
+      <bpmn:incoming>Seta_5</bpmn:incoming>
+      <bpmn:outgoing>Seta_20</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:serviceTask id="encerra" name="Encerra a sessão">
+      <bpmn:incoming>Seta_20</bpmn:incoming>
+      <bpmn:outgoing>Seta_21</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="fim_sair" name="Fora da conta">
+      <bpmn:incoming>Seta_21</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Seta_1" sourceRef="ini" targetRef="mostra" />
+    <bpmn:sequenceFlow id="Seta_2" sourceRef="mostra" targetRef="escolha" />
+    <bpmn:sequenceFlow id="Seta_3" name="editar dados" sourceRef="escolha" targetRef="altera" />
+    <bpmn:sequenceFlow id="Seta_4" name="trocar senha" sourceRef="escolha" targetRef="senhas" />
+    <bpmn:sequenceFlow id="Seta_5" name="sair" sourceRef="escolha" targetRef="sair" />
+    <bpmn:sequenceFlow id="Seta_6" sourceRef="altera" targetRef="put" />
+    <bpmn:sequenceFlow id="Seta_7" sourceRef="put" targetRef="ok_dados" />
+    <bpmn:sequenceFlow id="Seta_8" name="não" sourceRef="ok_dados" targetRef="erro_dados" />
+    <bpmn:sequenceFlow id="Seta_9" sourceRef="erro_dados" targetRef="altera" />
+    <bpmn:sequenceFlow id="Seta_10" name="sim" sourceRef="ok_dados" targetRef="grava" />
+    <bpmn:sequenceFlow id="Seta_11" sourceRef="grava" targetRef="atualiza" />
+    <bpmn:sequenceFlow id="Seta_12" sourceRef="atualiza" targetRef="fim_dados" />
+    <bpmn:sequenceFlow id="Seta_13" sourceRef="senhas" targetRef="post" />
+    <bpmn:sequenceFlow id="Seta_14" sourceRef="post" targetRef="ok_senha" />
+    <bpmn:sequenceFlow id="Seta_15" name="não" sourceRef="ok_senha" targetRef="erro_senha" />
+    <bpmn:sequenceFlow id="Seta_16" sourceRef="erro_senha" targetRef="senhas" />
+    <bpmn:sequenceFlow id="Seta_17" name="sim" sourceRef="ok_senha" targetRef="troca" />
+    <bpmn:sequenceFlow id="Seta_18" sourceRef="troca" targetRef="token" />
+    <bpmn:sequenceFlow id="Seta_19" sourceRef="token" targetRef="fim_senha" />
+    <bpmn:sequenceFlow id="Seta_20" sourceRef="sair" targetRef="encerra" />
+    <bpmn:sequenceFlow id="Seta_21" sourceRef="encerra" targetRef="fim_sair" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagrama_minha_conta">
+    <bpmndi:BPMNPlane id="Plano_minha_conta" bpmnElement="Colaboracao_minha_conta">
+      <bpmndi:BPMNShape id="Participante_minha_conta_di" bpmnElement="Participante_minha_conta" isHorizontal="true">
+        <dc:Bounds x="120" y="40" width="2035" height="1140" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_minha_conta_0_di" bpmnElement="Raia_minha_conta_0" isHorizontal="true">
+        <dc:Bounds x="150" y="40" width="2005" height="380" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_minha_conta_1_di" bpmnElement="Raia_minha_conta_1" isHorizontal="true">
+        <dc:Bounds x="150" y="420" width="2005" height="380" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Raia_minha_conta_2_di" bpmnElement="Raia_minha_conta_2" isHorizontal="true">
+        <dc:Bounds x="150" y="800" width="2005" height="380" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ini_di" bpmnElement="ini">
+        <dc:Bounds x="267" y="212" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="230" y="254" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="mostra_di" bpmnElement="mostra">
+        <dc:Bounds x="405" y="567" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="escolha_di" bpmnElement="escolha" isMarkerVisible="true">
+        <dc:Bounds x="650" y="205" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="548" y="181" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="altera_di" bpmnElement="altera">
+        <dc:Bounds x="795" y="67" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="put_di" bpmnElement="put">
+        <dc:Bounds x="990" y="827" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ok_dados_di" bpmnElement="ok_dados" isMarkerVisible="true">
+        <dc:Bounds x="1235" y="845" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1133" y="821" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="erro_dados_di" bpmnElement="erro_dados">
+        <dc:Bounds x="1185" y="447" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="grava_di" bpmnElement="grava">
+        <dc:Bounds x="1575" y="827" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="atualiza_di" bpmnElement="atualiza">
+        <dc:Bounds x="1770" y="447" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_dados_di" bpmnElement="fim_dados">
+        <dc:Bounds x="2022" y="472" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1985" y="514" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="senhas_di" bpmnElement="senhas">
+        <dc:Bounds x="795" y="187" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="post_di" bpmnElement="post">
+        <dc:Bounds x="1185" y="947" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ok_senha_di" bpmnElement="ok_senha" isMarkerVisible="true">
+        <dc:Bounds x="1430" y="965" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1328" y="941" width="100" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="erro_senha_di" bpmnElement="erro_senha">
+        <dc:Bounds x="1380" y="567" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="troca_di" bpmnElement="troca">
+        <dc:Bounds x="1575" y="947" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="token_di" bpmnElement="token">
+        <dc:Bounds x="1770" y="567" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_senha_di" bpmnElement="fim_senha">
+        <dc:Bounds x="2022" y="592" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1985" y="634" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sair_di" bpmnElement="sair">
+        <dc:Bounds x="795" y="687" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="encerra_di" bpmnElement="encerra">
+        <dc:Bounds x="990" y="1067" width="150" height="86" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fim_sair_di" bpmnElement="fim_sair">
+        <dc:Bounds x="1242" y="1092" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1205" y="1134" width="110" height="28" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Seta_1_di" bpmnElement="Seta_1">
+        <di:waypoint x="303" y="230" />
+        <di:waypoint x="380" y="230" />
+        <di:waypoint x="380" y="610" />
+        <di:waypoint x="405" y="610" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_2_di" bpmnElement="Seta_2">
+        <di:waypoint x="555" y="610" />
+        <di:waypoint x="625" y="610" />
+        <di:waypoint x="625" y="230" />
+        <di:waypoint x="650" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_3_di" bpmnElement="Seta_3">
+        <di:waypoint x="675" y="205" />
+        <di:waypoint x="675" y="110" />
+        <di:waypoint x="795" y="110" />
+        <bpmndi:BPMNLabel><dc:Bounds x="683" y="90" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_4_di" bpmnElement="Seta_4">
+        <di:waypoint x="700" y="230" />
+        <di:waypoint x="795" y="230" />
+        <bpmndi:BPMNLabel><dc:Bounds x="708" y="210" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_5_di" bpmnElement="Seta_5">
+        <di:waypoint x="675" y="255" />
+        <di:waypoint x="675" y="730" />
+        <di:waypoint x="795" y="730" />
+        <bpmndi:BPMNLabel><dc:Bounds x="683" y="710" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_6_di" bpmnElement="Seta_6">
+        <di:waypoint x="945" y="110" />
+        <di:waypoint x="965" y="110" />
+        <di:waypoint x="965" y="870" />
+        <di:waypoint x="990" y="870" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_7_di" bpmnElement="Seta_7">
+        <di:waypoint x="1140" y="870" />
+        <di:waypoint x="1235" y="870" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_8_di" bpmnElement="Seta_8">
+        <di:waypoint x="1260" y="845" />
+        <di:waypoint x="1260" y="533" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1266" y="823" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_9_di" bpmnElement="Seta_9">
+        <di:waypoint x="1260" y="447" />
+        <di:waypoint x="1260" y="173" />
+        <di:waypoint x="870" y="173" />
+        <di:waypoint x="870" y="153" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_10_di" bpmnElement="Seta_10">
+        <di:waypoint x="1285" y="870" />
+        <di:waypoint x="1575" y="870" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1293" y="850" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_11_di" bpmnElement="Seta_11">
+        <di:waypoint x="1725" y="870" />
+        <di:waypoint x="1745" y="870" />
+        <di:waypoint x="1745" y="490" />
+        <di:waypoint x="1770" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_12_di" bpmnElement="Seta_12">
+        <di:waypoint x="1920" y="490" />
+        <di:waypoint x="2022" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_13_di" bpmnElement="Seta_13">
+        <di:waypoint x="945" y="230" />
+        <di:waypoint x="1160" y="230" />
+        <di:waypoint x="1160" y="990" />
+        <di:waypoint x="1185" y="990" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_14_di" bpmnElement="Seta_14">
+        <di:waypoint x="1335" y="990" />
+        <di:waypoint x="1430" y="990" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_15_di" bpmnElement="Seta_15">
+        <di:waypoint x="1455" y="965" />
+        <di:waypoint x="1455" y="653" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1461" y="943" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_16_di" bpmnElement="Seta_16">
+        <di:waypoint x="1455" y="567" />
+        <di:waypoint x="1455" y="293" />
+        <di:waypoint x="870" y="293" />
+        <di:waypoint x="870" y="273" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_17_di" bpmnElement="Seta_17">
+        <di:waypoint x="1480" y="990" />
+        <di:waypoint x="1575" y="990" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1488" y="970" width="70" height="14" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_18_di" bpmnElement="Seta_18">
+        <di:waypoint x="1725" y="990" />
+        <di:waypoint x="1745" y="990" />
+        <di:waypoint x="1745" y="610" />
+        <di:waypoint x="1770" y="610" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_19_di" bpmnElement="Seta_19">
+        <di:waypoint x="1920" y="610" />
+        <di:waypoint x="2022" y="610" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_20_di" bpmnElement="Seta_20">
+        <di:waypoint x="870" y="773" />
+        <di:waypoint x="870" y="1110" />
+        <di:waypoint x="990" y="1110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Seta_21_di" bpmnElement="Seta_21">
+        <di:waypoint x="1140" y="1110" />
+        <di:waypoint x="1242" y="1110" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
