@@ -1,0 +1,65 @@
+# Publica o front React no GitHub Pages (D42). A API fica no Render (render.yaml).
+#
+# Antes da primeira vez, no GitHub (Settings do repositório):
+#   - Pages → Build and deployment → Source: "GitHub Actions"
+#   - Secrets and variables → Actions → Variables → API_URL = endereço da API no Render
+#     (ex.: https://assessor-api.onrender.com, sem barra no fim)
+# Roda a cada push na main que mexe no front, ou à mão em Actions → "Front no GitHub Pages".
+name: Front no GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["frontend/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Conferir a variável API_URL
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::error::Defina a variável API_URL (Settings → Secrets and variables → Actions → Variables) com o endereço da API no Render."
+            exit 1
+          fi
+      - run: npm ci
+      - name: Build (tsc + vite)
+        env:
+          VITE_API_URL: ${{ vars.API_URL }}
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

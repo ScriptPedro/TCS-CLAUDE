@@ -1,7 +1,8 @@
 # Imagem de produção do Assessor de Investimentos Virtual (D38, D39).
 # Um único contêiner: o FastAPI responde em /api e serve o front React compilado.
 # Os modelos NÃO entram na imagem: ficam montados em /models (pasta local no Docker,
-# bucket no Cloud Run). Os usuários ficam num PostgreSQL à parte, indicado por
+# bucket no Cloud Run) ou são baixados de ASSESSOR_MODELS_URL ao ligar (Render, D42).
+# Os usuários ficam num PostgreSQL à parte, indicado por
 # ASSESSOR_DATABASE_URL (D41). Normalmente quem monta e sobe tudo é o Terraform em infra/.
 #
 #   docker build -t assessor .
@@ -42,9 +43,13 @@ COPY app/ app/
 COPY api/ api/
 COPY --from=front /front/dist frontend/dist
 
-RUN useradd --create-home --uid 1000 assessor
+# /models é do usuário da API para o download do Render (D42); montagens por cima continuam valendo
+RUN useradd --create-home --uid 1000 assessor \
+    && mkdir -p /models && chown assessor /models
 USER assessor
 
 EXPOSE 8080
-# O Cloud Run define PORT; "exec" faz o uvicorn receber o sinal de parada direto.
-CMD ["sh", "-c", "exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT}"]
+# O Cloud Run e o Render definem PORT; "exec" faz o uvicorn receber o sinal de parada direto.
+# Antes, baixa os modelos se ASSESSOR_MODELS_URL estiver definida (sem ela, não faz nada).
+# Usa ";" e não "&&": se o download falhar, a API sobe assim mesmo e /api/saude mostra o problema.
+CMD ["sh", "-c", "python -m api.modelos_remotos; exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT}"]

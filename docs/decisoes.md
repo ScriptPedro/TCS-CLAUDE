@@ -584,3 +584,48 @@ Princípio: **nenhuma pergunta é só informativa** (minimização da LGPD). Tod
     está no Terraform do GCP.
   - O Postgres não roda como **root**: em contêineres de CI que rodam como root, suba o servidor com
     outro usuário e use `ASSESSOR_TEST_DATABASE_URL`.
+
+## D42 — Deploy no Render (API + PostgreSQL) com o front no GitHub Pages
+
+- **Contexto:** o grupo precisa de um endereço público fixo para a apresentação, sem cartão e sem
+  depender de um computador ligado. O Google Cloud (D38) não foi ativado, e o túnel do Docker local
+  (D39) muda de endereço e só funciona com o computador ligado. Os usuários precisam de um PostgreSQL
+  (D41).
+- **Decisão:**
+  - **API no Render**, plano grátis, a partir do **mesmo `Dockerfile`** da D38/D39. O Render define
+    `PORT`, que o `CMD` já usa.
+  - **PostgreSQL no Render**, plano grátis, na mesma região da API (`virginia`, a mais próxima do
+    Brasil). A API usa o endereço interno do banco (`fromDatabase` → `connectionString`).
+  - **Front no GitHub Pages**, publicado por `.github/workflows/pages.yml` (GitHub Actions). O
+    endereço da API entra no build por `VITE_API_URL` (variável `API_URL` do repositório). A subpasta
+    `/TCS-CLAUDE/` entra por `VITE_BASE`. Sem essas variáveis, o front continua chamando a mesma
+    origem, como antes.
+  - **CORS** liberado só para as origens de `ASSESSOR_CORS_ORIGINS`. Sem ela, nada muda. Não há
+    `allow_credentials`: o login vai no cabeçalho `Authorization` (D40), não em cookie.
+  - **Modelos:** o plano grátis não tem disco nem bucket, e os modelos não vão para o git. Então
+    `api/modelos_remotos.py` baixa um `.zip` de `ASSESSOR_MODELS_URL` quando o contêiner liga
+    (anexo de uma release do GitHub). Ele confere o `ASSESSOR_MODELS_SHA256`, se houver, porque os
+    `.joblib` são pickles e executam código ao carregar. Também extrai só os quatro nomes esperados,
+    ignorando subpastas e `../`. Sem a URL, não faz nada. Se o download falhar, a API sobe assim mesmo
+    e `/api/saude` mostra `"modelos": false`.
+  - **Infraestrutura como código:** o `render.yaml` (Blueprint) descreve o serviço, o banco e as
+    variáveis. `tests/test_deploy.py` confere a coerência entre ele, o `Dockerfile` e o workflow.
+  - **Primeiro admin:** o plano grátis não tem *Shell*, então `python -m api.usuarios criar-admin`
+    roda no computador de alguém do grupo, com a URL externa do banco.
+- **Alternativas descartadas:**
+  - **Front servido pela própria API no Render** (funcionaria, mas o grupo quis o front no Pages, que
+    não dorme. Assim a tela abre na hora, e só as chamadas esperam a API acordar. A imagem continua
+    com o front, para a D38/D39).
+  - **Modelos no git** (vão contra a regra de não versionar artefatos gerados, e cada retreino
+    incharia o histórico).
+  - **Baixar os modelos no build da imagem** (depende de o Render repassar variáveis ao `docker
+    build`, e cada troca de modelo exigiria um build novo. Baixar ao ligar leva poucos segundos).
+  - **Disco persistente do Render** (só nos planos pagos).
+  - **Cookie de sessão entre domínios** (exigiria `SameSite=None`, `allow_credentials` e proteção
+    contra CSRF. O token Bearer já funciona entre domínios).
+- **Limitações:**
+  - A API grátis dorme após 15 min sem acesso, e o primeiro acesso leva ~1 minuto.
+  - 512 MB de RAM: com modelos pequenos a API usa ~340 MB. Com os modelos reais, é preciso conferir.
+  - O Postgres grátis expira 30 dias depois de criado (regra do Render na data desta decisão), e os
+    usuários somem com ele.
+  - Os modelos ficam públicos na release, porque o repositório é público.

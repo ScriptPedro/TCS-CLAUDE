@@ -14,6 +14,11 @@ export class ErroApi extends Error {
   }
 }
 
+// Vazio = mesma origem (dev com o proxy do Vite, ou o front servido pela própria API).
+// No GitHub Pages aponta para a API no Render (D42), que libera essa origem no CORS.
+const BASE_API = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+export const API_REMOTA = BASE_API !== "";
+
 // Chamado quando o servidor diz que a sessão não vale mais (401): o App volta para o login
 let aoExpirar: () => void = () => {};
 export const quandoSessaoExpirar = (f: () => void) => {
@@ -36,9 +41,13 @@ async function chamar<T>(rota: string, metodo = "GET", corpo?: unknown, autentic
   if (autenticado && token) headers.Authorization = `Bearer ${token}`;
   let resp: Response;
   try {
-    resp = await fetch(rota, { method: metodo, headers, body: corpo === undefined ? undefined : JSON.stringify(corpo) });
+    resp = await fetch(BASE_API + rota, { method: metodo, headers, body: corpo === undefined ? undefined : JSON.stringify(corpo) });
   } catch {
-    throw new ErroApi(["Não foi possível conectar à API. Ela está rodando em http://localhost:8000?"]);
+    throw new ErroApi([
+      API_REMOTA
+        ? "Não foi possível falar com o servidor. Ele dorme quando fica parado e leva até um minuto para acordar: tente de novo em instantes."
+        : "Não foi possível conectar à API. Ela está rodando em http://localhost:8000?",
+    ]);
   }
   try {
     return await ler<T>(resp);

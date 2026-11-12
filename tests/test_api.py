@@ -138,3 +138,40 @@ def test_recomendacao_fica_salva_para_quem_pediu(logado: TestClient) -> None:
     outro = TestClient(api.app)
     token = outro.post("/api/auth/registro", json={**USUARIA, "cpf": "935.411.347-80", "email": "bruno@exemplo.com"}).json()["token"]
     assert outro.get("/api/recomendacoes/ultima", headers={"Authorization": f"Bearer {token}"}).json() is None
+
+
+# ---------------------------------------------------------------------------
+# CORS para o front no GitHub Pages (D42)
+# ---------------------------------------------------------------------------
+def test_origens_cors_lidas_da_variavel() -> None:
+    assert api.origens_cors(None) == []
+    assert api.origens_cors(" ") == []
+    assert api.origens_cors("https://a.github.io/, https://b.com") == ["https://a.github.io", "https://b.com"]
+
+
+def test_cors_libera_so_a_origem_configurada() -> None:
+    from fastapi import FastAPI
+
+    teste = FastAPI()
+    teste.get("/api/ping")(lambda: {"ok": True})
+    api.liberar_origens(teste, ["https://grupo.github.io"])
+    c = TestClient(teste)
+    pre = c.options("/api/ping", headers={
+        "Origin": "https://grupo.github.io", "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "authorization,content-type",
+    })
+    assert pre.status_code == 200
+    assert pre.headers["access-control-allow-origin"] == "https://grupo.github.io"
+    assert "authorization" in pre.headers["access-control-allow-headers"].lower()
+    outro = c.get("/api/ping", headers={"Origin": "https://malicioso.example"})
+    assert "access-control-allow-origin" not in outro.headers
+
+
+def test_sem_origens_a_api_nao_manda_cabecalho_cors() -> None:
+    from fastapi import FastAPI
+
+    teste = FastAPI()
+    teste.get("/api/ping")(lambda: {"ok": True})
+    api.liberar_origens(teste, [])
+    r = TestClient(teste).get("/api/ping", headers={"Origin": "https://grupo.github.io"})
+    assert "access-control-allow-origin" not in r.headers

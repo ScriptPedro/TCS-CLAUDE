@@ -530,6 +530,11 @@ LOG_FORMAT: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
 # O padrão é o Postgres local de desenvolvimento descrito no README (senha só para uso local).
 DATABASE_URL: str = "postgresql://assessor:assessor@localhost:5432/assessor"
 DATABASE_TIMEOUT_S: int = 5
+
+# Deploy no Render (D42): sem disco no plano grátis, a API baixa os modelos de ASSESSOR_MODELS_URL
+# (um .zip) ao subir. O limite evita encher o contêiner se a URL apontar para o arquivo errado.
+MODELS_DOWNLOAD_TIMEOUT_S: int = 120
+MODELS_DOWNLOAD_MAX_BYTES: int = 300 * 1024 * 1024
 # Idade: inteiro de maioridade (18, como no questionário) até o maior registro verificado
 # da história (Jeanne Calment, 122 anos e 164 dias, morta em 1997)
 IDADE_MINIMA: int = 18

@@ -56,3 +56,42 @@ def test_postgres_dos_usuarios_no_docker():
 def test_imagem_tem_o_driver_do_postgres():
     deploy = _pins(ROOT / "requirements-deploy.txt")
     assert "psycopg[binary]" in deploy
+
+
+# ---------------------------------------------------------------------------
+# Render + GitHub Pages (D42)
+# ---------------------------------------------------------------------------
+def test_dockerfile_baixa_os_modelos_antes_de_ligar_a_api():
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    cmd = next(linha for linha in dockerfile.splitlines() if linha.startswith("CMD"))
+    # ";" e não "&&": sem os modelos, a API sobe assim mesmo e /api/saude mostra o problema
+    assert "python -m api.modelos_remotos; exec uvicorn" in cmd
+    assert "chown assessor /models" in dockerfile
+
+
+def test_blueprint_do_render():
+    render = (ROOT / "render.yaml").read_text(encoding="utf-8")
+    assert "dockerfilePath: ./Dockerfile" in render
+    assert "healthCheckPath: /api/saude" in render
+    for chave in ("ASSESSOR_DATABASE_URL", "ASSESSOR_MODELS_URL", "ASSESSOR_CORS_ORIGINS"):
+        assert f"key: {chave}" in render
+    assert re.search(r"fromDatabase:\s*\n\s*name: assessor-db\s*\n\s*property: connectionString", render)
+    assert re.search(r"databases:\s*\n\s*- name: assessor-db", render)
+    # O banco e a API na mesma região, senão o endereço interno do banco não funciona
+    assert len(set(re.findall(r"region: (\w+)", render))) == 1
+
+
+def test_workflow_do_pages_passa_a_api_e_a_subpasta():
+    workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
+    assert "VITE_API_URL: ${{ vars.API_URL }}" in workflow
+    assert "VITE_BASE: /${{ github.event.repository.name }}/" in workflow
+    assert "path: frontend/dist" in workflow
+    vite = (ROOT / "frontend" / "vite.config.ts").read_text(encoding="utf-8")
+    assert "VITE_BASE" in vite
+    assert "VITE_API_URL" in (ROOT / "frontend" / "src" / "api.ts").read_text(encoding="utf-8")
+
+
+def test_cors_libera_o_pages_que_o_workflow_publica():
+    render = (ROOT / "render.yaml").read_text(encoding="utf-8")
+    origem = re.search(r"key: ASSESSOR_CORS_ORIGINS[^\n]*\n\s*value: (\S+)", render).group(1)
+    assert origem == "https://scriptpedro.github.io"  # origem = só esquema + host, sem a subpasta

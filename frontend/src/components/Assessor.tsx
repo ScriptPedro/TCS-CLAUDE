@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { buscarQuestionario, ErroApi, pedirRecomendacao } from "../api";
+import { API_REMOTA, buscarQuestionario, ErroApi, pedirRecomendacao } from "../api";
 import { lerRespostas, salvarRespostas, salvarResultado } from "../armazenamento";
 import type { Questionario as Q, Respostas, Resultado as R } from "../types";
 import Icone from "./Icone";
@@ -105,8 +105,14 @@ export default function Assessor({ inicial, resultadoSalvo, onResultado, onSair 
         {precisaApi && erroCarga && (
           <div className="erro" role="alert">
             <p><strong>O questionário não carregou.</strong> {erroCarga}</p>
-            <p>Inicie a API na raiz do projeto:</p>
-            <pre>uvicorn api.main:app --port 8000</pre>
+            {API_REMOTA ? (
+              <p>Volte a esta tela em instantes: o servidor pode estar acordando.</p>
+            ) : (
+              <>
+                <p>Inicie a API na raiz do projeto:</p>
+                <pre>uvicorn api.main:app --port 8000</pre>
+              </>
+            )}
           </div>
         )}
         {precisaApi && !erroCarga && !questionario && <p className="carregando">Carregando o questionário…</p>}

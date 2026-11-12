@@ -41,7 +41,8 @@ assessor-investimentos/
 │   ├── main.py            # FastAPI do front React (questionário, recomendação)
 │   ├── usuarios.py        # login, cadastro e gerenciamento de usuários (D40)
 │   ├── banco.py           # PostgreSQL dos usuários (SQL puro, soft delete, sessões, recomendações)
-│   └── validacao.py       # validação de CPF, nome, idade, e-mail e senha
+│   ├── validacao.py       # validação de CPF, nome, idade, e-mail e senha
+│   └── modelos_remotos.py # baixa o .zip dos modelos ao ligar no Render (D42)
 ├── app/
 │   ├── main.py            # Etapa 7 — Streamlit (layout e navegação)
 │   └── components.py      # validação do formulário, gráfico (testáveis sem Streamlit)
@@ -55,6 +56,7 @@ assessor-investimentos/
 │   └── figures/           # figuras 01–18 para os slides
 ├── infra/docker/         # Terraform: sobe o app no Docker local, com link público opcional (D39)
 ├── infra/gcp/            # Terraform: Google Cloud Run na cota grátis (D38); Dockerfile na raiz
+├── infra/render/         # Render (API + Postgres) e GitHub Pages (front) (D42); render.yaml na raiz
 ├── models/                # segmentation.joblib, recommender.joblib, prep_stats.json, raio_x.json
 ├── notebooks/01_eda.ipynb # Etapa 3
 ├── reports/               # qualidade, segmentação, recomendação, Raio X, personas, auditoria de viés
@@ -202,10 +204,13 @@ Para apresentar com um único servidor: `cd frontend; npm run build` e depois s�
 
 ### Publicar na nuvem
 
-O `Dockerfile` empacota a API e o front num só contêiner, e o Terraform sobe esse contêiner:
+O `Dockerfile` empacota a API e o front num só contêiner, que pode subir de três jeitos:
 
 - **[infra/docker](infra/docker/README.md):** no Docker do próprio computador, grátis e sem cartão, com
   link público temporário opcional para a banca (D39). Basta `cd infra\docker; terraform init; terraform apply`.
+- **[infra/render](infra/render/README.md):** API e PostgreSQL no Render (plano grátis, sem cartão) e
+  front no GitHub Pages, com endereço fixo (D42). O `render.yaml` descreve o serviço e o banco, e o
+  workflow `.github/workflows/pages.yml` publica o front.
 - **[infra/gcp](infra/gcp/README.md):** no Google Cloud Run, dentro da cota grátis, com os modelos num
   bucket (D38). Exige conta de faturamento ativa.
 

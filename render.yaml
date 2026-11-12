@@ -1,0 +1,34 @@
+# Blueprint do Render (D42): a API (FastAPI, mesmo Dockerfile da D38/D39) e o PostgreSQL dos
+# usuários (D41), os dois no plano grátis. O front fica no GitHub Pages
+# (.github/workflows/pages.yml). Passo a passo em infra/render/README.md.
+#
+# No Render: New → Blueprint → escolha este repositório e o branch. Ele pede os valores marcados
+# com "sync: false" (a URL do .zip com os modelos e, opcionalmente, o SHA-256 dele).
+services:
+  - type: web
+    name: assessor-api
+    runtime: docker
+    plan: free
+    region: virginia          # a região mais próxima do Brasil; o banco precisa estar na mesma
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/saude
+    envVars:
+      - key: ASSESSOR_DATABASE_URL
+        fromDatabase:
+          name: assessor-db
+          property: connectionString   # endereço interno: não sai da rede do Render
+      - key: ASSESSOR_MODELS_URL       # .zip com segmentation.joblib, recommender.joblib, prep_stats.json (+ raio_x.json)
+        sync: false
+      - key: ASSESSOR_MODELS_SHA256    # opcional, mas recomendado: os .joblib executam código ao carregar
+        sync: false
+      - key: ASSESSOR_CORS_ORIGINS     # o front no GitHub Pages
+        value: https://scriptpedro.github.io
+
+databases:
+  - name: assessor-db
+    plan: free
+    region: virginia
+    databaseName: assessor
+    user: assessor
+    postgresMajorVersion: "16"

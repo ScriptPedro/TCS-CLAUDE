@@ -14,6 +14,8 @@ Uso (na raiz do projeto):
 
 Se ``frontend/dist`` existir (``npm run build``), o front também é servido aqui,
 em http://localhost:8000. ASSESSOR_MODELS_DIR aponta para outra pasta de modelos.
+ASSESSOR_CORS_ORIGINS (origens separadas por vírgula) libera o front publicado em outro
+domínio, como o GitHub Pages (D42).
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -43,7 +46,23 @@ from src.portfolio import (
 ROOT = Path(__file__).resolve().parents[1]
 FRONT_DIST = ROOT / "frontend" / "dist"
 
+def origens_cors(texto: str | None) -> list[str]:
+    """"https://a.github.io, https://b.com/" → ["https://a.github.io", "https://b.com"]."""
+    return [o.strip().rstrip("/") for o in (texto or "").split(",") if o.strip()]
+
+
+def liberar_origens(aplicacao: FastAPI, origens: list[str]) -> None:
+    """Deixa o front de outro domínio chamar a API (D42). O login vai no cabeçalho Authorization,
+    não em cookie, então não é preciso allow_credentials. Sem origens, nada muda: mesma origem só."""
+    if origens:
+        aplicacao.add_middleware(
+            CORSMiddleware, allow_origins=origens, allow_methods=["*"],
+            allow_headers=["Authorization", "Content-Type"], max_age=600,
+        )
+
+
 app = FastAPI(title="Assessor de Investimentos Virtual", version="1.0.0")
+liberar_origens(app, origens_cors(os.environ.get("ASSESSOR_CORS_ORIGINS")))
 app.include_router(roteador_usuarios)  # antes da rota coringa do front, no fim do arquivo
 
 
